@@ -3,143 +3,333 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>正 N/M 角形（Regular & Star）検証ツール</title>
+  <title>正 N/M 角形（複数・アニメ・設定）</title>
   <style>
-    :root { --bg:#0b0f17; --panel:#111827; --fg:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; }
-    * { box-sizing: border-box; }
-    body{
-      margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
-      background: radial-gradient(1200px 700px at 30% 20%, #111827, #05070b);
-      color: var(--fg);
-      display:flex; min-height:100vh;
+    :root{
+      --bg:#0b0f17; --panel:#111827; --fg:#e5e7eb; --muted:#9ca3af;
+      --border: rgba(255,255,255,.10);
+      --border2: rgba(255,255,255,.14);
+      --accent:#60a5fa;
     }
-    .wrap{ display:grid; grid-template-columns: 360px 1fr; width:100%; }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+      background: radial-gradient(1200px 700px at 30% 20%, #111827, #05070b);
+      color:var(--fg);
+      min-height:100vh;
+    }
+    .wrap{ display:grid; grid-template-columns: 420px 1fr; min-height:100vh; }
     .panel{
-      padding:18px; background: rgba(17,24,39,.8); border-right: 1px solid rgba(255,255,255,.08);
+      padding:16px;
+      background: rgba(17,24,39,.86);
+      border-right: 1px solid rgba(255,255,255,.08);
       backdrop-filter: blur(8px);
     }
-    h1{ font-size:18px; margin:0 0 12px; }
-    .desc{ font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:14px; }
-    .row{ margin:10px 0 14px; }
-    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
-    input[type="number"], input[type="range"]{
-      width:100%;
+    h1{ font-size:18px; margin:0 0 10px; }
+    .desc{ font-size:12px; color:var(--muted); line-height:1.55; margin-bottom:12px; }
+
+    .controlsTop{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 14px;
     }
-    input[type="number"]{
-      padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25); color: var(--fg);
-      outline:none;
-    }
-    input[type="range"]{ accent-color: var(--accent); }
-    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    .btns{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
     button{
-      padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06); color: var(--fg); cursor:pointer;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.06);
+      color:var(--fg);
+      cursor:pointer;
+      user-select:none;
     }
     button:hover{ background: rgba(255,255,255,.10); }
-    .stat{
-      margin-top:14px; padding:12px; border-radius:14px;
-      border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.20);
-      font-size:12px; line-height:1.65;
+    .btnPrimary{ border-color: rgba(96,165,250,.45); }
+    .btnDanger{ border-color: rgba(248,113,113,.35); }
+
+    .rows{
+      display:flex; flex-direction:column; gap:10px;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
     }
-    .stat b{ color:#fff; }
+
+    .rowCard{
+      display:grid;
+      grid-template-columns: 1fr 1fr auto auto auto;
+      gap:8px;
+      align-items:center;
+      padding:10px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      background: rgba(255,255,255,.04);
+    }
+    .rowCard .label{
+      font-size:11px; color:var(--muted); margin-bottom:4px;
+    }
+    .rowCard .field{
+      display:flex; flex-direction:column;
+    }
+    input[type="number"]{
+      width:100%;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      color:var(--fg);
+      outline:none;
+    }
+    .iconBtn{
+      width:40px; height:40px;
+      display:inline-flex; align-items:center; justify-content:center;
+      border-radius:12px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.06);
+      cursor:pointer;
+      font-size:16px;
+    }
+    .iconBtn:hover{ background: rgba(255,255,255,.10); }
+    .swatch{
+      width:14px; height:14px; border-radius:6px;
+      border:1px solid rgba(255,255,255,.25);
+      display:inline-block;
+      vertical-align:middle;
+      margin-left:6px;
+    }
+    .rowMeta{
+      grid-column: 1 / -1;
+      font-size:11px;
+      color: var(--muted);
+      margin-top:4px;
+      line-height:1.5;
+    }
+
+    .globalBox{
+      margin-top:12px;
+      padding:12px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+      font-size:12px;
+      line-height:1.65;
+      color: var(--muted);
+    }
+    .globalBox b{ color:#fff; }
+
     .canvasWrap{
-      display:flex; align-items:center; justify-content:center; padding:18px;
+      display:flex; align-items:center; justify-content:center;
+      padding:18px;
+    }
+
+    /* 正方形を維持するコンテナ */
+    .square{
+      width: min(920px, calc(100vw - 470px));
+      aspect-ratio: 1 / 1;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.02);
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden;
     }
     canvas{
-      width:min(900px, calc(100vw - 420px));
-      height:min(900px, calc(100vh - 36px));
-      background: rgba(255,255,255,.02);
+      width:100%;
+      height:100%;
+      display:block;
+    }
+
+    /* モーダル（設定） */
+    .modalOverlay{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index: 1000;
+    }
+    .modal{
+      width:min(520px, 96vw);
+      background: rgba(17,24,39,.96);
       border:1px solid rgba(255,255,255,.10);
       border-radius:18px;
+      padding:14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
     }
-    .note{ margin-top:10px; color:var(--muted); font-size:12px; }
-    .small{ font-size:11px; color:var(--muted); margin-top:6px; }
+    .modalHeader{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; margin-bottom:10px;
+    }
+    .modalTitle{ font-size:14px; font-weight:700; }
+    .closeBtn{
+      width:38px; height:38px; border-radius:12px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.06);
+      color:var(--fg); cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px;
+    }
+    .closeBtn:hover{ background: rgba(255,255,255,.10); }
+    .modalBody{
+      display:flex; flex-direction:column; gap:10px;
+      padding:10px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+      font-size:12px;
+    }
+    .modalRow{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:8px 8px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+    }
+    .modalRow .left{ color: var(--fg); }
+    .modalRow .right{ display:flex; gap:8px; align-items:center; }
+
+    input[type="color"]{
+      width:44px; height:32px;
+      border:none; background: transparent; padding:0;
+      cursor:pointer;
+    }
+
+    .tiny{
+      font-size:11px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+
+    .footerNote{
+      margin-top:10px;
+      font-size:11px;
+      color:var(--muted);
+      line-height:1.55;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="panel">
-      <h1>正 N/M 角形（Regular & Star）</h1>
-      <div class="desc">
-        円周上の <b>N</b> 等分点を用意し、頂点を <b>M</b> 個ずつ飛ばして結ぶことで {N/M} を描画します。<br/>
-        始点 0 に戻った瞬間に描画を終了（成分をずらして描かない）します。
-      </div>
-
-      <div class="grid2">
-        <div class="row">
-          <label for="N">N（自然数, N≥3 推奨）</label>
-          <input id="N" type="number" min="1" step="1" value="7" />
-          <div class="small">例：N=7</div>
-        </div>
-        <div class="row">
-          <label for="M">M（自然数）</label>
-          <input id="M" type="number" min="1" step="1" value="2" />
-          <div class="small">例：M=2（{7/2}）</div>
-        </div>
-      </div>
-
-      <div class="row">
-        <label for="size">描画サイズ（半径比）</label>
-        <input id="size" type="range" min="50" max="95" value="82" />
-      </div>
-
-      <div class="row">
-        <label for="showPoints"><input id="showPoints" type="checkbox" checked /> 頂点を表示</label>
-        <label for="showLabels"><input id="showLabels" type="checkbox" /> 頂点番号を表示</label>
-        <label for="showCircle"><input id="showCircle" type="checkbox" checked /> 外接円を表示</label>
-      </div>
-
-      <div class="btns">
-        <button id="save">スクリーンショット保存（PNG）</button>
-        <button id="reset">再描画</button>
-      </div>
-
-      <div class="stat" id="stat"></div>
-      <div class="note">
-        ※ M は内部で <b>M mod N</b> に正規化して描画します。<br/>
-        ※ N が小さすぎる/ M≡0(mod N) の場合は線分が成立しません。
-      </div>
+<div class="wrap">
+  <div class="panel">
+    <h1>正 N/M 角形（複数・重ね描き）</h1>
+    <div class="desc">
+      円周上の <b>N</b> 等分点から、ステップ幅 <b>M</b> で頂点を辿り、始点 <b>0</b> に戻った瞬間に終了します（成分の始点ずらしはしません）。<br/>
+      「＋」で複数の {N/M} を同一キャンバスに色分けで重ね描きできます。
     </div>
 
-    <div class="canvasWrap">
-      <canvas id="cv" width="1000" height="1000"></canvas>
+    <div class="controlsTop">
+      <button id="addRow" class="btnPrimary">＋ 追加</button>
+      <button id="saveAll">スクリーンショット保存（PNG）</button>
+      <button id="redraw">再描画</button>
+      <button id="clearAnim" class="btnDanger">全アニメ停止</button>
+    </div>
+
+    <div class="rows" id="rows"></div>
+
+    <div class="globalBox" id="globalInfo"></div>
+
+    <div class="footerNote">
+      ※ 描画パネルは常に正方形比率（外接円が歪みません）。<br/>
+      ※ M は内部で <b>M mod N</b> に正規化して描画（0は不可）します。<br/>
+      ※ アニメは「線を順に描く」方式です（頂点の配置は固定）。
     </div>
   </div>
+
+  <div class="canvasWrap">
+    <div class="square">
+      <canvas id="cv"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- 設定モーダル -->
+<div class="modalOverlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modalHeader">
+      <div class="modalTitle" id="modalTitle">設定</div>
+      <button class="closeBtn" id="modalClose" title="閉じる">✕</button>
+    </div>
+    <div class="modalBody">
+      <div class="modalRow">
+        <div class="left">この図形を表示</div>
+        <div class="right"><input type="checkbox" id="optVisible"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">頂点を表示</div>
+        <div class="right"><input type="checkbox" id="optShowPoints"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">頂点番号を表示</div>
+        <div class="right"><input type="checkbox" id="optShowLabels"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">線の色</div>
+        <div class="right"><input type="color" id="optLineColor"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">頂点の色</div>
+        <div class="right"><input type="color" id="optPointColor"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">線と頂点を同色にする</div>
+        <div class="right"><input type="checkbox" id="optLinkColors"></div>
+      </div>
+
+      <div class="tiny">
+        デフォルトでは「線色＝頂点色」です。<br/>
+        解除すると、線色と頂点色を別々にできます。
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 (() => {
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d');
 
-  const elN = document.getElementById('N');
-  const elM = document.getElementById('M');
-  const elSize = document.getElementById('size');
-  const elShowPoints = document.getElementById('showPoints');
-  const elShowLabels = document.getElementById('showLabels');
-  const elShowCircle = document.getElementById('showCircle');
-  const elStat = document.getElementById('stat');
-  const btnSave = document.getElementById('save');
-  const btnReset = document.getElementById('reset');
+  const rowsEl = document.getElementById('rows');
+  const globalInfoEl = document.getElementById('globalInfo');
+
+  const btnAdd = document.getElementById('addRow');
+  const btnSave = document.getElementById('saveAll');
+  const btnRedraw = document.getElementById('redraw');
+  const btnClearAnim = document.getElementById('clearAnim');
+
+  // Modal
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalClose = document.getElementById('modalClose');
+  const optVisible = document.getElementById('optVisible');
+  const optShowPoints = document.getElementById('optShowPoints');
+  const optShowLabels = document.getElementById('optShowLabels');
+  const optLineColor = document.getElementById('optLineColor');
+  const optPointColor = document.getElementById('optPointColor');
+  const optLinkColors = document.getElementById('optLinkColors');
 
   const TAU = Math.PI * 2;
+
+  // パレット（行が増えても見分けがつく程度の並び）
+  const palette = [
+    "#60a5fa", "#f472b6", "#34d399", "#f59e0b", "#a78bfa",
+    "#22d3ee", "#fb7185", "#84cc16", "#e879f9", "#f87171",
+  ];
 
   function gcd(a,b){
     a = Math.abs(a); b = Math.abs(b);
     while(b !== 0){ const t = a % b; a = b; b = t; }
     return a;
   }
-
   function normalizeStep(N, M){
-    // 1..N-1 に正規化（0 は不可）
     let s = M % N;
     if (s < 0) s += N;
-    return s;
+    return s; // 0..N-1
   }
-
   function pointsOnCircle(N, cx, cy, r){
-    // 角度  -pi/2 からスタート（12時方向）
     const pts = [];
     for(let k=0;k<N;k++){
       const ang = -Math.PI/2 + TAU*(k/N);
@@ -147,20 +337,16 @@
     }
     return pts;
   }
-
   function buildCycle(N, step){
-    // 始点 0 から step で辿り、0に戻った瞬間で終了
-    // 返り値: 頂点インデックス列 [0, ..., 0]（最後の0を含める）
+    // 0 に戻った時点で停止（最後の0を含む）
     const seq = [0];
-    if (N <= 0) return seq;
-    if (step === 0) return seq; // 動けない
+    if (N <= 0 || step === 0) return seq;
     let cur = 0;
     const seen = new Set([0]); // safety
     while(true){
       cur = (cur + step) % N;
       seq.push(cur);
       if(cur === 0) break;
-      // 念のため（理論上ここには来ないが異常系保険）
       if (seen.has(cur)) break;
       seen.add(cur);
       if (seq.length > N + 2) break;
@@ -168,147 +354,459 @@
     return seq;
   }
 
+  // ====== キャンバスの「正方形・高解像度」対応 ======
+  function resizeCanvasToDisplaySize(){
+    const dpr = window.devicePixelRatio || 1;
+    // CSS上の表示サイズ
+    const rect = cv.getBoundingClientRect();
+    // 正方形コンテナ内なので rectは正方形のはず
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    if (cv.width !== w || cv.height !== h){
+      cv.width = w;
+      cv.height = h;
+    }
+    ctx.setTransform(1,0,0,1,0,0);
+  }
+
+  // ====== 行データ ======
+  let nextId = 1;
+  const rows = []; // RowState[]
+  let rafId = null;
+
+  function newRowDefaults(){
+    const idx = rows.length;
+    const base = palette[idx % palette.length];
+    return {
+      id: nextId++,
+      N: 7,
+      M: 2,
+      visible: true,
+      showPoints: true,
+      showLabels: false,
+      lineColor: base,
+      pointColor: base,
+      linkColors: true,
+      animPlaying: false,
+      animSpeedEdgesPerSec: 60, // 内部固定（必要なら後で設定に出せる）
+      animEdgeCount: 0, // 何本目まで描いたか（アニメ中）
+    };
+  }
+
+  function rowTitle(r){
+    return `#${r.id}  N=${r.N}, M=${r.M}`;
+  }
+
+  function createRowUI(r){
+    const card = document.createElement('div');
+    card.className = 'rowCard';
+    card.dataset.rowId = String(r.id);
+
+    const fieldN = document.createElement('div');
+    fieldN.className = 'field';
+    fieldN.innerHTML = `<div class="label">N</div>`;
+    const inN = document.createElement('input');
+    inN.type = 'number'; inN.min = '1'; inN.step = '1';
+    inN.value = String(r.N);
+    fieldN.appendChild(inN);
+
+    const fieldM = document.createElement('div');
+    fieldM.className = 'field';
+    fieldM.innerHTML = `<div class="label">M</div>`;
+    const inM = document.createElement('input');
+    inM.type = 'number'; inM.min = '1'; inM.step = '1';
+    inM.value = String(r.M);
+    fieldM.appendChild(inM);
+
+    const btnAnim = document.createElement('button');
+    btnAnim.className = 'iconBtn';
+    btnAnim.title = '線を描くアニメーション 再生/停止';
+    btnAnim.textContent = '▶';
+
+    const btnGear = document.createElement('button');
+    btnGear.className = 'iconBtn';
+    btnGear.title = '設定';
+    btnGear.textContent = '⚙';
+
+    const btnDel = document.createElement('button');
+    btnDel.className = 'iconBtn';
+    btnDel.title = '削除';
+    btnDel.textContent = '🗑';
+
+    const meta = document.createElement('div');
+    meta.className = 'rowMeta';
+
+    // --- イベント ---
+    function applyN(){
+      const v = Math.floor(Number(inN.value));
+      r.N = Number.isFinite(v) ? v : r.N;
+      if (r.N < 1) r.N = 1;
+      inN.value = String(r.N);
+      // N変更は周期も変わるのでアニメ進捗リセット
+      r.animEdgeCount = 0;
+      scheduleDraw();
+    }
+    function applyM(){
+      const v = Math.floor(Number(inM.value));
+      r.M = Number.isFinite(v) ? v : r.M;
+      if (r.M < 1) r.M = 1;
+      inM.value = String(r.M);
+      r.animEdgeCount = 0;
+      scheduleDraw();
+    }
+    inN.addEventListener('input', () => { applyN(); });
+    inM.addEventListener('input', () => { applyM(); });
+    inN.addEventListener('change', applyN);
+    inM.addEventListener('change', applyM);
+
+    btnAnim.addEventListener('click', () => {
+      r.animPlaying = !r.animPlaying;
+      btnAnim.textContent = r.animPlaying ? '⏸' : '▶';
+      // 再生開始時に進捗ゼロから描き直したいならここで 0
+      // r.animEdgeCount = 0;
+      scheduleDraw();
+    });
+
+    btnGear.addEventListener('click', () => openSettings(r, card));
+
+    btnDel.addEventListener('click', () => {
+      const i = rows.findIndex(x => x.id === r.id);
+      if (i >= 0) rows.splice(i,1);
+      card.remove();
+      scheduleDraw();
+    });
+
+    // メタ更新
+    function updateMeta(){
+      const N = r.N, M = r.M;
+      if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1){
+        meta.textContent = `入力エラー（N,Mは自然数）`;
+        return;
+      }
+      if (N < 3){
+        meta.textContent = `注意: N=${N} は多角形になりません（N≥3推奨）`;
+        return;
+      }
+      const step = normalizeStep(N, M);
+      const d = gcd(N, step);
+      const L = (step === 0) ? 0 : (N / d);
+      const sw = `<span class="swatch" style="background:${r.lineColor}"></span>`;
+      meta.innerHTML = `step=M mod N = ${step}, gcd(N,step)=${d}, 閉路長L=${L} ${sw}`;
+    }
+
+    // 外から呼べるようにぶら下げ
+    card._updateMeta = updateMeta;
+    card._setAnimIcon = () => btnAnim.textContent = r.animPlaying ? '⏸' : '▶';
+
+    card.appendChild(fieldN);
+    card.appendChild(fieldM);
+    card.appendChild(btnAnim);
+    card.appendChild(btnGear);
+    card.appendChild(btnDel);
+    card.appendChild(meta);
+
+    // 初期メタ
+    updateMeta();
+    return card;
+  }
+
+  // ====== 設定モーダル ======
+  let modalRow = null;
+  let modalRowCard = null;
+
+  function openSettings(r, card){
+    modalRow = r;
+    modalRowCard = card;
+    modalTitle.textContent = `設定 ${rowTitle(r)}`;
+
+    optVisible.checked = r.visible;
+    optShowPoints.checked = r.showPoints;
+    optShowLabels.checked = r.showLabels;
+    optLineColor.value = r.lineColor;
+    optPointColor.value = r.pointColor;
+    optLinkColors.checked = r.linkColors;
+
+    // pointColor UIをlinkColorsに合わせて
+    optPointColor.disabled = r.linkColors;
+
+    modalOverlay.style.display = 'flex';
+  }
+  function closeSettings(){
+    modalOverlay.style.display = 'none';
+    modalRow = null;
+    modalRowCard = null;
+  }
+
+  function syncModalToRow(){
+    if (!modalRow) return;
+    const r = modalRow;
+
+    r.visible = optVisible.checked;
+    r.showPoints = optShowPoints.checked;
+    r.showLabels = optShowLabels.checked;
+
+    r.linkColors = optLinkColors.checked;
+
+    // 色の反映
+    r.lineColor = optLineColor.value;
+
+    if (r.linkColors){
+      r.pointColor = r.lineColor;
+      optPointColor.value = r.pointColor;
+      optPointColor.disabled = true;
+    } else {
+      optPointColor.disabled = false;
+      r.pointColor = optPointColor.value;
+    }
+
+    // 行メタ更新
+    if (modalRowCard && modalRowCard._updateMeta) modalRowCard._updateMeta();
+
+    scheduleDraw();
+  }
+
+  modalClose.addEventListener('click', closeSettings);
+  modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) closeSettings();
+  });
+  [optVisible,optShowPoints,optShowLabels,optLineColor,optPointColor,optLinkColors].forEach(el => {
+    el.addEventListener('input', syncModalToRow);
+    el.addEventListener('change', syncModalToRow);
+  });
+
+  // ====== 描画 ======
   function clearCanvas(){
     ctx.clearRect(0,0,cv.width,cv.height);
   }
 
-  function draw(){
-    const Nraw = Number(elN.value);
-    const Mraw = Number(elM.value);
+  function drawBackground(){
+    // 背景は透明（必要なら薄く塗る）
+    // ctx.fillStyle = 'rgba(0,0,0,0.0)';
+    // ctx.fillRect(0,0,cv.width,cv.height);
+  }
 
-    const N = Number.isFinite(Nraw) ? Math.floor(Nraw) : 0;
-    const M = Number.isFinite(Mraw) ? Math.floor(Mraw) : 0;
-
-    clearCanvas();
-
-    // 背景（スクショ時もそれっぽくなるよう薄く塗る）
+  function drawCircle(cx, cy, r){
     ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.0)'; // 透明のままにしたい場合はここを透明
-    ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, TAU);
+    ctx.strokeStyle = 'rgba(255,255,255,.18)';
+    ctx.lineWidth = Math.max(1, cv.width * 0.002); // 解像度依存
+    ctx.stroke();
     ctx.restore();
+  }
 
-    const cx = cv.width/2, cy = cv.height/2;
-    const r = Math.min(cv.width, cv.height) * (Number(elSize.value)/100) * 0.5;
+  function drawRow(r, cx, cy, radius){
+    if (!r.visible) return;
 
-    // 入力チェック
-    if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1){
-      elStat.innerHTML = `<b>入力エラー</b><br/>N, M は自然数で入力してください。`;
-      return;
-    }
-    if (N < 3){
-      elStat.innerHTML = `<b>注意</b><br/>N=${N} は多角形になりません（N≥3推奨）。`;
-      // それでも点だけ描いておく
-    }
+    const N = r.N, M = r.M;
+    if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1) return;
 
-    const step = normalizeStep(N, M);
-    const d = gcd(N, step);
-    const L = (N > 0) ? (N / d) : 0;
+    // 点生成
+    const pts = pointsOnCircle(N, cx, cy, radius);
 
-    const pts = pointsOnCircle(N, cx, cy, r);
-
-    // 外接円
-    if (elShowCircle.checked){
+    // 頂点
+    if (r.showPoints && N >= 1){
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, TAU);
-      ctx.strokeStyle = 'rgba(255,255,255,.18)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 点＆番号
-    if (elShowPoints.checked && N >= 1){
-      ctx.save();
+      const dot = Math.max(2, cv.width * 0.004); // 自動スケール
       for(let i=0;i<N;i++){
         ctx.beginPath();
-        ctx.arc(pts[i].x, pts[i].y, 5, 0, TAU);
-        ctx.fillStyle = 'rgba(255,255,255,.75)';
+        ctx.arc(pts[i].x, pts[i].y, dot, 0, TAU);
+        ctx.fillStyle = r.pointColor + "CC"; // 少し透過
         ctx.fill();
 
-        if (elShowLabels.checked){
-          ctx.fillStyle = 'rgba(255,255,255,.75)';
-          ctx.font = '14px system-ui, sans-serif';
+        if (r.showLabels){
+          ctx.fillStyle = 'rgba(255,255,255,.80)';
+          ctx.font = `${Math.max(10, cv.width*0.018)}px system-ui, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          // 少し外側へ
           const vx = pts[i].x - cx, vy = pts[i].y - cy;
           const len = Math.hypot(vx,vy) || 1;
-          const tx = pts[i].x + (vx/len)*16;
-          const ty = pts[i].y + (vy/len)*16;
+          const tx = pts[i].x + (vx/len)*Math.max(12, cv.width*0.02);
+          const ty = pts[i].y + (vy/len)*Math.max(12, cv.width*0.02);
           ctx.fillText(String(i), tx, ty);
         }
       }
       ctx.restore();
     }
 
-    // step=0 は描けない
-    if (step === 0){
-      elStat.innerHTML =
-        `<b>描画不可</b><br/>M≡0 (mod N) になっています。M を N の倍数以外にしてください。<br/>（M=${M} → step=${step}）`;
-      return;
+    if (N < 3) return; // それ以上は線は意味薄いので停止
+
+    const step = normalizeStep(N, M);
+    if (step === 0) return; // 描けない
+
+    const cycle = buildCycle(N, step); // [0,...,0]
+    if (cycle.length < 2) return;
+
+    // アニメ: どこまで線を描くか
+    const totalEdges = cycle.length - 1;
+    let edgesToDraw = totalEdges;
+    if (r.animPlaying){
+      edgesToDraw = Math.max(0, Math.min(totalEdges, Math.floor(r.animEdgeCount)));
+    } else {
+      // 停止中でも「途中で止めた状態」を保持したいならこのまま
+      // 完全表示に戻したい場合は edgesToDraw = totalEdges;
+      edgesToDraw = Math.max(0, Math.min(totalEdges, Math.floor(r.animEdgeCount || totalEdges)));
+      if (!r.animEdgeCount) edgesToDraw = totalEdges;
     }
 
-    // 1成分のみ（0に戻った瞬間で終了）
-    const cycle = buildCycle(N, step);
-
-    // 辺を描画
-    if (cycle.length >= 2){
+    // 線
+    if (edgesToDraw > 0){
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(pts[cycle[0]].x, pts[cycle[0]].y);
-      for(let i=1;i<cycle.length;i++){
+      for(let i=1;i<=edgesToDraw;i++){
         const idx = cycle[i];
         ctx.lineTo(pts[idx].x, pts[idx].y);
       }
-      ctx.strokeStyle = 'rgba(96,165,250,.95)'; // アクセント
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = r.lineColor + "F2";
+      ctx.lineWidth = Math.max(1.5, cv.width * 0.0045);
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.stroke();
       ctx.restore();
     }
+  }
 
-    // 情報表示（検証に使える最低限）
-    const reduced = step; // M mod N
-    elStat.innerHTML = `
-      <b>入力</b>: N=${N}, M=${M}<br/>
-      <b>正規化</b>: step = M mod N = ${reduced}${(reduced===0? '（描画不可）':'' )}<br/>
-      <b>gcd(N, step)</b> = ${d}<br/>
-      <b>閉路長 L</b> = N / gcd(N, step) = ${L}<br/>
-      <b>描画した頂点列</b>（始点0→0で停止）: 長さ ${cycle.length}（最後の0含む）
+  function anyAnimationPlaying(){
+    return rows.some(r => r.animPlaying);
+  }
+
+  let lastT = null;
+  function tick(t){
+    if (lastT == null) lastT = t;
+    const dt = (t - lastT) / 1000;
+    lastT = t;
+
+    // 進捗更新
+    for(const r of rows){
+      if (!r.animPlaying) continue;
+      const N = r.N, M = r.M;
+      if (!Number.isInteger(N) || !Number.isInteger(M) || N < 3 || M < 1) continue;
+      const step = normalizeStep(N, M);
+      if (step === 0) continue;
+      const cycle = buildCycle(N, step);
+      const totalEdges = cycle.length - 1;
+
+      // 進捗
+      r.animEdgeCount += (r.animSpeedEdgesPerSec * dt);
+
+      // 完了したら停止（最後まで描いたら止める）
+      if (r.animEdgeCount >= totalEdges + 0.0001){
+        r.animEdgeCount = totalEdges;
+        r.animPlaying = false;
+        // UIアイコン更新
+        const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
+        if (card && card._setAnimIcon) card._setAnimIcon();
+      }
+    }
+
+    drawAll();
+
+    if (anyAnimationPlaying()){
+      rafId = requestAnimationFrame(tick);
+    } else {
+      rafId = null;
+      lastT = null;
+    }
+  }
+
+  function scheduleDraw(){
+    drawAll();
+    if (anyAnimationPlaying() && !rafId){
+      rafId = requestAnimationFrame(tick);
+    }
+    updateGlobalInfo();
+  }
+
+  function drawAll(){
+    resizeCanvasToDisplaySize();
+    clearCanvas();
+    drawBackground();
+
+    const cx = cv.width/2, cy = cv.height/2;
+    const radius = Math.min(cv.width, cv.height) * 0.82 * 0.5;
+
+    // 外接円（共通）
+    drawCircle(cx, cy, radius);
+
+    // 行ごとに描く
+    for(const r of rows){
+      drawRow(r, cx, cy, radius);
+    }
+  }
+
+  function updateGlobalInfo(){
+    // 全体情報：表示中の行数・アニメ中数など
+    const total = rows.length;
+    const visible = rows.filter(r => r.visible).length;
+    const playing = rows.filter(r => r.animPlaying).length;
+
+    globalInfoEl.innerHTML = `
+      <b>行数</b>: ${total}（表示: ${visible}）<br/>
+      <b>アニメ再生中</b>: ${playing}<br/>
+      <b>保存</b>: 「スクリーンショット保存（PNG）」でキャンバス全体を保存できます。
     `;
   }
 
-  // リアルタイム描画
-  const redraw = () => draw();
-  [elN, elM].forEach(el => {
-    el.addEventListener('input', redraw);
-    el.addEventListener('change', redraw);
-  });
-  [elSize, elShowPoints, elShowLabels, elShowCircle].forEach(el => {
-    el.addEventListener('input', redraw);
-    el.addEventListener('change', redraw);
+  // ====== 追加・削除・全停止など ======
+  function addRow(initial){
+    const r = Object.assign(newRowDefaults(), initial || {});
+    // 行数に応じて色を再割当（追加順でパレット）
+    const idx = rows.length;
+    const base = palette[idx % palette.length];
+    if (!initial || !initial.lineColor) r.lineColor = base;
+    if (!initial || !initial.pointColor) r.pointColor = base;
+    if (r.linkColors) r.pointColor = r.lineColor;
+
+    rows.push(r);
+    const ui = createRowUI(r);
+    rowsEl.appendChild(ui);
+    scheduleDraw();
+  }
+
+  btnAdd.addEventListener('click', () => addRow());
+
+  btnRedraw.addEventListener('click', () => {
+    // 再描画：進捗が0なら全面表示になる仕様にしているので、ここでは表示状態を揃えるだけ
+    scheduleDraw();
   });
 
-  btnReset.addEventListener('click', draw);
+  btnClearAnim.addEventListener('click', () => {
+    for(const r of rows){
+      r.animPlaying = false;
+      // 「停止して全表示に戻す」なら次行を有効化:
+      // r.animEdgeCount = 0;
+      const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
+      if (card && card._setAnimIcon) card._setAnimIcon();
+    }
+    if (rafId){
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      lastT = null;
+    }
+    scheduleDraw();
+  });
 
   // スクリーンショット保存（PNG）
   btnSave.addEventListener('click', () => {
     // 現在のキャンバスを PNG 化
     const url = cv.toDataURL('image/png');
-    const N = Math.floor(Number(elN.value));
-    const M = Math.floor(Number(elM.value));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `regular_N${N}_M${M}.png`;
+    a.download = `NM-polygons.png`;
     document.body.appendChild(a);
     a.click();
     a.remove();
   });
 
-  // 初回描画
-  draw();
+  // リサイズ追従（正方形保ちつつ描画更新）
+  window.addEventListener('resize', () => scheduleDraw());
+
+  // ====== 初期行 ======
+  addRow({ N: 7, M: 2 });
+  // 例：2つ目を初期から置きたいなら下を有効化
+  // addRow({ N: 9, M: 2 });
+
 })();
 </script>
 </body>
