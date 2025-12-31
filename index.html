@@ -345,6 +345,14 @@
         <div class="right"><input type="checkbox" id="optShowLabels"></div>
       </div>
 
+      <!-- ✅ 新規：頂点番号の大きさ -->
+      <div class="modalRow">
+        <div class="left">頂点番号サイズ（px）</div>
+        <div class="right">
+          <input class="miniInput" type="number" id="optLabelSize" min="8" step="1" />
+        </div>
+      </div>
+
       <div class="modalRow">
         <div class="left">線の色</div>
         <div class="right"><input type="color" id="optLineColor"></div>
@@ -355,10 +363,7 @@
         <div class="right"><input type="color" id="optPointColor"></div>
       </div>
 
-      <div class="modalRow">
-        <div class="left">線と頂点を同色にする</div>
-        <div class="right"><input type="checkbox" id="optLinkColors"></div>
-      </div>
+      <!-- ❌ 削除：線と頂点を同色にする -->
 
       <div class="modalRow">
         <div class="left">アニメ時間（秒）</div>
@@ -376,6 +381,7 @@
 
       <div class="tiny">
         ・始点は内部で <b>start mod N</b> に正規化する。<br/>
+        ・頂点番号は背景に応じて見やすい色（自動）で描画します。<br/>
       </div>
     </div>
   </div>
@@ -406,7 +412,6 @@
           <input type="color" id="optCircleColor">
         </div>
       </div>
-
     </div>
   </div>
 </div>
@@ -432,9 +437,9 @@
   const optVisible = document.getElementById('optVisible');
   const optShowPoints = document.getElementById('optShowPoints');
   const optShowLabels = document.getElementById('optShowLabels');
+  const optLabelSize = document.getElementById('optLabelSize');
   const optLineColor = document.getElementById('optLineColor');
   const optPointColor = document.getElementById('optPointColor');
-  const optLinkColors = document.getElementById('optLinkColors');
   const optAnimTime = document.getElementById('optAnimTime');
   const optStart = document.getElementById('optStart');
 
@@ -446,13 +451,14 @@
 
   const TAU = Math.PI * 2;
 
-  // ✅ 図形を下にずらす量：以前(80px)から0.5cm上げる → 60px
+  // 図形オフセット
   const DEFAULT_CENTER_Y_OFFSET_CSS = 60;
   let centerYOffsetPx = 0;
 
   // Defaults
   const DEFAULT_ANIM_TIME = 8.0;
   const DEFAULT_START = 0;
+  const DEFAULT_LABEL_SIZE = 22; // ✅ 追加：頂点番号サイズ（表示上の既定値）
 
   const palette = [
     "#60a5fa", "#f472b6", "#34d399", "#f59e0b", "#a78bfa",
@@ -462,7 +468,7 @@
   // ===== View (zoom/pan) =====
   const view = {
     scale: 1.0,
-    panX: 0.0, // device-pixel coords
+    panX: 0.0,
     panY: 0.0,
     minScale: 0.2,
     maxScale: 20.0,
@@ -484,7 +490,7 @@
     return ((n % m) + m) % m;
   }
   function normalizeStep(N, M){
-    return mod(M, N); // 0..N-1
+    return mod(M, N);
   }
   function normalizeStart(N, start){
     return mod(start, N);
@@ -499,13 +505,12 @@
     return pts;
   }
 
-  // start に戻ったら終了（最後のstartを含む）
   function buildCycle(N, step, start){
     const s = normalizeStart(N, start);
     const seq = [s];
     if (N <= 0 || step === 0) return seq;
     let cur = s;
-    const seen = new Set([cur]); // safety
+    const seen = new Set([cur]);
     while(true){
       cur = (cur + step) % N;
       seq.push(cur);
@@ -529,7 +534,6 @@
     }
 
     centerYOffsetPx = Math.round(DEFAULT_CENTER_Y_OFFSET_CSS * dpr);
-
     ctx.setTransform(1,0,0,1,0,0);
   }
 
@@ -540,7 +544,6 @@
   let lastT = null;
   let globalPlaying = false;
 
-  // Selected row id (by click on canvas)
   let selectedRowId = null;
 
   function newRowDefaults(){
@@ -548,8 +551,6 @@
     const base = palette[idx % palette.length];
     return {
       id: nextId++,
-
-      // 初期は空欄（未入力は描画しない）
       N: null,
       M: null,
 
@@ -559,12 +560,15 @@
       visible: true,
       showPoints: true,
       showLabels: false,
+
+      // ✅ 追加：頂点番号サイズ
+      labelSizePx: DEFAULT_LABEL_SIZE,
+
       lineColor: base,
       pointColor: base,
-      linkColors: true,
 
       animPlaying: false,
-      animProgressEdges: 0.0, // continuous
+      animProgressEdges: 0.0,
       animSpeedEdgesPerSec: 0.0,
     };
   }
@@ -577,8 +581,6 @@
 
   function getCycleInfo(r){
     const N = r.N, M = r.M;
-
-    // 未入力は描画対象外
     if (!Number.isInteger(N) || !Number.isInteger(M) || N < 3 || M < 1) {
       return { edges: 0, step: 0, L: 0, d: 0, startN: 0, cycle: [0], valid:false };
     }
@@ -791,10 +793,12 @@
     const base = palette[idx % palette.length];
     if (!initial || !initial.lineColor) r.lineColor = base;
     if (!initial || !initial.pointColor) r.pointColor = base;
-    if (r.linkColors) r.pointColor = r.lineColor;
 
     const t = Number(r.animTimeSec);
     r.animTimeSec = (Number.isFinite(t) && t >= 0.2) ? t : DEFAULT_ANIM_TIME;
+
+    const ls = Math.floor(Number(r.labelSizePx));
+    r.labelSizePx = (Number.isFinite(ls) && ls >= 8) ? ls : DEFAULT_LABEL_SIZE;
 
     rows.push(r);
     rowsEl.appendChild(createRowUI(r));
@@ -818,13 +822,14 @@
     optVisible.checked = r.visible;
     optShowPoints.checked = r.showPoints;
     optShowLabels.checked = r.showLabels;
+
+    optLabelSize.value = String(r.labelSizePx);
+
     optLineColor.value = r.lineColor;
     optPointColor.value = r.pointColor;
-    optLinkColors.checked = r.linkColors;
+
     optAnimTime.value = String(Number(r.animTimeSec).toFixed(1));
     optStart.value = String(Number.isFinite(r.start) ? r.start : 0);
-
-    optPointColor.disabled = r.linkColors;
 
     rowModalOverlay.style.display = 'flex';
   }
@@ -842,24 +847,21 @@
     r.showPoints = optShowPoints.checked;
     r.showLabels = optShowLabels.checked;
 
-    r.linkColors = optLinkColors.checked;
-    r.lineColor = optLineColor.value;
-
-    if (r.linkColors){
-      r.pointColor = r.lineColor;
-      optPointColor.value = r.pointColor;
-      optPointColor.disabled = true;
-    } else {
-      optPointColor.disabled = false;
-      r.pointColor = optPointColor.value;
+    {
+      const v = Math.floor(Number(optLabelSize.value));
+      r.labelSizePx = (Number.isFinite(v) && v >= 8) ? v : DEFAULT_LABEL_SIZE;
+      optLabelSize.value = String(r.labelSizePx);
     }
 
-    { // anim time
+    r.lineColor = optLineColor.value;
+    r.pointColor = optPointColor.value;
+
+    {
       const v = Number(optAnimTime.value);
       r.animTimeSec = (Number.isFinite(v) && v >= 0.2) ? v : DEFAULT_ANIM_TIME;
       optAnimTime.value = String(r.animTimeSec.toFixed(1));
     }
-    { // start
+    {
       const v = Math.floor(Number(optStart.value));
       r.start = Number.isFinite(v) ? v : 0;
       optStart.value = String(r.start);
@@ -883,7 +885,7 @@
   rowModalOverlay.addEventListener('click', (e) => {
     if (e.target === rowModalOverlay) closeRowSettings();
   });
-  [optVisible,optShowPoints,optShowLabels,optLineColor,optPointColor,optLinkColors,optAnimTime,optStart].forEach(el => {
+  [optVisible,optShowPoints,optShowLabels,optLabelSize,optLineColor,optPointColor,optAnimTime,optStart].forEach(el => {
     el.addEventListener('input', syncRowModalToRow);
     el.addEventListener('change', syncRowModalToRow);
   });
@@ -905,7 +907,7 @@
 
   // Theme state
   const themeState = {
-    theme: 'dark',          // 'dark' | 'light'
+    theme: 'dark',
     circleHex: '#b0b0b0',
   };
 
@@ -942,7 +944,6 @@
       root.setProperty('--btnBgHover', 'rgba(0,0,0,.06)');
       root.setProperty('--btnBorder', 'rgba(0,0,0,.30)');
 
-      /* Modal (light) */
       root.setProperty('--overlayBg', 'rgba(0,0,0,.25)');
       root.setProperty('--modalBg', '#ffffff');
       root.setProperty('--modalBorder', 'rgba(0,0,0,.18)');
@@ -960,7 +961,6 @@
 
       root.setProperty('--circle', hexToRgba(themeState.circleHex, 0.75));
     } else {
-      // dark
       root.setProperty('--bg', '#0b0f17');
       root.setProperty('--bgImg', 'radial-gradient(1200px 700px at 30% 20%, rgba(17,24,39,1), rgba(5,7,11,1))');
       root.setProperty('--fg', '#e5e7eb');
@@ -979,7 +979,6 @@
       root.setProperty('--boxBg', 'rgba(0,0,0,.18)');
       root.setProperty('--cardBg', 'rgba(255,255,255,.04)');
 
-      /* Modal (dark) */
       root.setProperty('--overlayBg', 'rgba(0,0,0,.55)');
       root.setProperty('--modalBg', 'rgba(17,24,39,.96)');
       root.setProperty('--modalBorder', 'rgba(255,255,255,.10)');
@@ -1028,6 +1027,14 @@
     ctx.restore();
   }
 
+  // ✅ ラベル色：背景に応じて見やすく
+  function getLabelColor(){
+    return (themeState.theme === 'light') ? 'rgba(17,24,39,0.95)' : 'rgba(255,255,255,0.92)';
+  }
+  function getLabelStrokeColor(){
+    return (themeState.theme === 'light') ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.78)';
+  }
+
   function drawRow(r, cx, cy, radius){
     if (!r.visible) return;
 
@@ -1048,6 +1055,38 @@
         ctx.globalAlpha = 0.80;
         ctx.fill();
         ctx.globalAlpha = 1.0;
+      }
+      ctx.restore();
+    }
+
+    // ✅ ここがバグ修正点：showLabels が true のとき番号を描く
+    if (r.showLabels && N >= 1){
+      ctx.save();
+      const labelColor = getLabelColor();
+      const strokeColor = getLabelStrokeColor();
+
+      // 画面での見た目が一定になるよう、scaleで割る
+      const size = Math.max(8, (Number(r.labelSizePx) || DEFAULT_LABEL_SIZE)) / view.scale;
+
+      ctx.font = `700 ${size}px "KaTeX_Main","KaTeX_Math","Times New Roman",serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const off = Math.max(14, (cv.width * 0.022)) / view.scale;
+
+      for(let i=0;i<N;i++){
+        const vx = pts[i].x - cx, vy = pts[i].y - cy;
+        const len = Math.hypot(vx,vy) || 1;
+        const tx = pts[i].x + (vx/len)*off;
+        const ty = pts[i].y + (vy/len)*off;
+
+        // 白黒どちらでも読めるように縁取り
+        ctx.lineWidth = Math.max(2.5, size * 0.22);
+        ctx.strokeStyle = strokeColor;
+        ctx.strokeText(String(i), tx, ty);
+
+        ctx.fillStyle = labelColor;
+        ctx.fillText(String(i), tx, ty);
       }
       ctx.restore();
     }
@@ -1422,7 +1461,7 @@
     a.remove();
   });
 
-  // ✅ リセット：テーマは維持（設定ボタンでのみ変更）
+  // リセット：テーマは維持（設定ボタンでのみ変更）
   btnReset.addEventListener('click', () => {
     globalPlaying = false;
     btnToggleAll.textContent = "▶ 全アニメ再生";
@@ -1439,7 +1478,6 @@
 
     resetView();
 
-    // ✅ テーマ（背景/外接円色）は保持。再描画だけ行う
     applyTheme();
 
     addRow({ N: null, M: null, start: DEFAULT_START, animTimeSec: DEFAULT_ANIM_TIME });
