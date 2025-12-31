@@ -446,8 +446,8 @@
 
   const TAU = Math.PI * 2;
 
-  // ✅ 図形を下にずらす量（だいたい2cm ≒ 76px → 80px）
-  const DEFAULT_CENTER_Y_OFFSET_CSS = 80;
+  // ✅ 図形を下にずらす量：以前(80px)から0.5cm上げる → 60px
+  const DEFAULT_CENTER_Y_OFFSET_CSS = 60;
   let centerYOffsetPx = 0;
 
   // Defaults
@@ -528,7 +528,6 @@
       cv.height = h;
     }
 
-    // ✅ 2cm相当の下オフセットをdevice pixelで保持
     centerYOffsetPx = Math.round(DEFAULT_CENTER_Y_OFFSET_CSS * dpr);
 
     ctx.setTransform(1,0,0,1,0,0);
@@ -597,10 +596,7 @@
   }
 
   function prepareSpeedsForAll(){
-    // Only rows that are valid will animate
     const validRows = rows.filter(r => getCycleInfo(r).valid && getCycleInfo(r).edges > 0);
-
-    // finish together: use max(animTimeSec) among valid
     const times = validRows.map(r => Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME));
     const Tglobal = times.length ? Math.max(...times) : DEFAULT_ANIM_TIME;
 
@@ -749,7 +745,6 @@
         return;
       }
 
-      // Individual play: use its own animTimeSec
       const T = Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME);
       r.animSpeedEdgesPerSec = edges > 0 ? (edges / T) : 0.0;
 
@@ -859,24 +854,20 @@
       r.pointColor = optPointColor.value;
     }
 
-    // anim time
-    {
+    { // anim time
       const v = Number(optAnimTime.value);
       r.animTimeSec = (Number.isFinite(v) && v >= 0.2) ? v : DEFAULT_ANIM_TIME;
       optAnimTime.value = String(r.animTimeSec.toFixed(1));
     }
-    // start
-    {
+    { // start
       const v = Math.floor(Number(optStart.value));
       r.start = Number.isFinite(v) ? v : 0;
       optStart.value = String(r.start);
     }
 
-    // Reset animation on setting change
     r.animPlaying = false;
     r.animProgressEdges = 0.0;
 
-    // Stop global play
     if (globalPlaying){
       globalPlaying = false;
       btnToggleAll.textContent = "▶ 全アニメ再生";
@@ -1049,7 +1040,7 @@
     // vertices
     if (r.showPoints && N >= 1){
       ctx.save();
-      const dot = Math.max(2, cv.width * 0.004) / view.scale; // stable on zoom
+      const dot = Math.max(2, cv.width * 0.004) / view.scale;
       for(let i=0;i<N;i++){
         ctx.beginPath();
         ctx.arc(pts[i].x, pts[i].y, dot, 0, TAU);
@@ -1057,21 +1048,6 @@
         ctx.globalAlpha = 0.80;
         ctx.fill();
         ctx.globalAlpha = 1.0;
-
-        if (r.showLabels){
-          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim();
-          ctx.globalAlpha = 0.85;
-          ctx.font = `${Math.max(10, cv.width*0.018)/view.scale}px system-ui, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          const vx = pts[i].x - cx, vy = pts[i].y - cy;
-          const len = Math.hypot(vx,vy) || 1;
-          const off = Math.max(12, cv.width*0.02)/view.scale;
-          const tx = pts[i].x + (vx/len)*off;
-          const ty = pts[i].y + (vy/len)*off;
-          ctx.fillText(String(i), tx, ty);
-          ctx.globalAlpha = 1.0;
-        }
       }
       ctx.restore();
     }
@@ -1079,7 +1055,6 @@
     const totalEdges = info.edges;
     if (totalEdges <= 0) return;
 
-    // growing line animation
     const p = r.animPlaying
       ? Math.max(0, Math.min(totalEdges, r.animProgressEdges))
       : totalEdges;
@@ -1116,7 +1091,6 @@
     ctx.stroke();
     ctx.globalAlpha = 1.0;
 
-    // Highlight if selected
     if (selectedRowId === r.id){
       ctx.globalAlpha = 0.18;
       ctx.lineWidth = (Math.max(8, cv.width * 0.012) / view.scale);
@@ -1139,7 +1113,6 @@
     ctx.closePath();
   }
 
-  // ✅ HUD：N/M のみ表示
   function drawHUD(){
     if (selectedRowId == null) return;
     const r = rows.find(x => x.id === selectedRowId);
@@ -1158,11 +1131,10 @@
     const pad = Math.round(fontSize * 0.35);
 
     const texFont = `"KaTeX_Main","KaTeX_Math","Times New Roman",serif`;
-
     const line1 = `N=${r.N},  M=${r.M}`;
 
     ctx.save();
-    ctx.setTransform(1,0,0,1,0,0); // screen coords
+    ctx.setTransform(1,0,0,1,0,0);
 
     ctx.font = `700 ${fontSize}px ${texFont}`;
     const w1 = ctx.measureText(line1).width;
@@ -1177,14 +1149,12 @@
     ctx.strokeStyle = bd;
     ctx.stroke();
 
-    // Accent bar
     ctx.fillStyle = r.lineColor;
     ctx.globalAlpha = 0.88;
     roundRect(ctx, x+8, y+8, Math.max(12, fontSize*0.16), boxH-16, 10);
     ctx.fill();
     ctx.globalAlpha = 1.0;
 
-    // Text
     ctx.fillStyle = fg;
     ctx.font = `700 ${fontSize}px ${texFont}`;
     ctx.fillText(line1, x + pad + 18, y + pad + fontSize - 4);
@@ -1197,9 +1167,8 @@
     clearAndFillCanvas();
 
     const cx = cv.width/2;
-    const cy = cv.height/2 + centerYOffsetPx;  // ✅ 下にずらす
+    const cy = cv.height/2 + centerYOffsetPx;
 
-    // 初期サイズを0.9倍
     const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5 * 0.9;
 
     ctx.save();
@@ -1207,7 +1176,6 @@
     ctx.scale(view.scale, view.scale);
 
     drawCircle(0, 0, baseRadius);
-
     for(const r of rows){
       drawRow(r, 0, 0, baseRadius);
     }
@@ -1298,7 +1266,7 @@
 
   function screenToWorld(px, py){
     const cx = cv.width/2;
-    const cy = cv.height/2 + centerYOffsetPx; // ✅ 下げた中心を使う
+    const cy = cv.height/2 + centerYOffsetPx;
     const wx = (px - cx - view.panX) / view.scale;
     const wy = (py - cy - view.panY) / view.scale;
     return { x: wx, y: wy };
@@ -1385,7 +1353,7 @@
     const { x: mx, y: my } = getCanvasPixelPos(e);
 
     const cx = cv.width / 2;
-    const cy = cv.height / 2 + centerYOffsetPx; // ✅ 下げた中心を使う
+    const cy = cv.height / 2 + centerYOffsetPx;
 
     const oldScale = view.scale;
     const zoomFactor = Math.exp((-e.deltaY) * 0.0012);
@@ -1416,7 +1384,7 @@
   });
 
   // ===== Controls =====
-  btnAdd.addEventListener('click', () => addRow()); // default blank row
+  btnAdd.addEventListener('click', () => addRow());
 
   btnToggleAll.addEventListener('click', () => {
     globalPlaying = !globalPlaying;
@@ -1454,8 +1422,8 @@
     a.remove();
   });
 
+  // ✅ リセット：テーマは維持（設定ボタンでのみ変更）
   btnReset.addEventListener('click', () => {
-    // Stop animations
     globalPlaying = false;
     btnToggleAll.textContent = "▶ 全アニメ再生";
     if (rafId){
@@ -1464,23 +1432,16 @@
       lastT = null;
     }
 
-    // Clear rows
     rows.splice(0, rows.length);
     rowsEl.innerHTML = '';
     selectedRowId = null;
     nextId = 1;
 
-    // Reset view
     resetView();
 
-    // Reset theme
-    themeState.theme = 'dark';
-    themeState.circleHex = '#b0b0b0';
-    optTheme.value = 'dark';
-    optCircleColor.value = themeState.circleHex;
+    // ✅ テーマ（背景/外接円色）は保持。再描画だけ行う
     applyTheme();
 
-    // Add initial blank row (N/M empty)
     addRow({ N: null, M: null, start: DEFAULT_START, animTimeSec: DEFAULT_ANIM_TIME });
     scheduleDraw();
   });
@@ -1490,10 +1451,7 @@
   // ===== Init =====
   window.addEventListener('resize', () => scheduleDraw());
 
-  // Default theme/circle
   applyTheme();
-
-  // Initial blank row
   addRow({ N: null, M: null, start: DEFAULT_START, animTimeSec: DEFAULT_ANIM_TIME });
 
 })();
