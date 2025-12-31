@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>正 N/M 角形（Regular & Star）検証ツール</title>
+  <style>
+    :root { --bg:#0b0f17; --panel:#111827; --fg:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; }
+    * { box-sizing: border-box; }
+    body{
+      margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background: radial-gradient(1200px 700px at 30% 20%, #111827, #05070b);
+      color: var(--fg);
+      display:flex; min-height:100vh;
+    }
+    .wrap{ display:grid; grid-template-columns: 360px 1fr; width:100%; }
+    .panel{
+      padding:18px; background: rgba(17,24,39,.8); border-right: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(8px);
+    }
+    h1{ font-size:18px; margin:0 0 12px; }
+    .desc{ font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:14px; }
+    .row{ margin:10px 0 14px; }
+    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    input[type="number"], input[type="range"]{
+      width:100%;
+    }
+    input[type="number"]{
+      padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25); color: var(--fg);
+      outline:none;
+    }
+    input[type="range"]{ accent-color: var(--accent); }
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .btns{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    button{
+      padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06); color: var(--fg); cursor:pointer;
+    }
+    button:hover{ background: rgba(255,255,255,.10); }
+    .stat{
+      margin-top:14px; padding:12px; border-radius:14px;
+      border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.20);
+      font-size:12px; line-height:1.65;
+    }
+    .stat b{ color:#fff; }
+    .canvasWrap{
+      display:flex; align-items:center; justify-content:center; padding:18px;
+    }
+    canvas{
+      width:min(900px, calc(100vw - 420px));
+      height:min(900px, calc(100vh - 36px));
+      background: rgba(255,255,255,.02);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:18px;
+    }
+    .note{ margin-top:10px; color:var(--muted); font-size:12px; }
+    .small{ font-size:11px; color:var(--muted); margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <h1>正 N/M 角形（Regular & Star）</h1>
+      <div class="desc">
+        円周上の <b>N</b> 等分点を用意し、頂点を <b>M</b> 個ずつ飛ばして結ぶことで {N/M} を描画します。<br/>
+        始点 0 に戻った瞬間に描画を終了（成分をずらして描かない）します。
+      </div>
+
+      <div class="grid2">
+        <div class="row">
+          <label for="N">N（自然数, N≥3 推奨）</label>
+          <input id="N" type="number" min="1" step="1" value="7" />
+          <div class="small">例：N=7</div>
+        </div>
+        <div class="row">
+          <label for="M">M（自然数）</label>
+          <input id="M" type="number" min="1" step="1" value="2" />
+          <div class="small">例：M=2（{7/2}）</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="size">描画サイズ（半径比）</label>
+        <input id="size" type="range" min="50" max="95" value="82" />
+      </div>
+
+      <div class="row">
+        <label for="showPoints"><input id="showPoints" type="checkbox" checked /> 頂点を表示</label>
+        <label for="showLabels"><input id="showLabels" type="checkbox" /> 頂点番号を表示</label>
+        <label for="showCircle"><input id="showCircle" type="checkbox" checked /> 外接円を表示</label>
+      </div>
+
+      <div class="btns">
+        <button id="save">スクリーンショット保存（PNG）</button>
+        <button id="reset">再描画</button>
+      </div>
+
+      <div class="stat" id="stat"></div>
+      <div class="note">
+        ※ M は内部で <b>M mod N</b> に正規化して描画します。<br/>
+        ※ N が小さすぎる/ M≡0(mod N) の場合は線分が成立しません。
+      </div>
+    </div>
+
+    <div class="canvasWrap">
+      <canvas id="cv" width="1000" height="1000"></canvas>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+
+  const elN = document.getElementById('N');
+  const elM = document.getElementById('M');
+  const elSize = document.getElementById('size');
+  const elShowPoints = document.getElementById('showPoints');
+  const elShowLabels = document.getElementById('showLabels');
+  const elShowCircle = document.getElementById('showCircle');
+  const elStat = document.getElementById('stat');
+  const btnSave = document.getElementById('save');
+  const btnReset = document.getElementById('reset');
+
+  const TAU = Math.PI * 2;
+
+  function gcd(a,b){
+    a = Math.abs(a); b = Math.abs(b);
+    while(b !== 0){ const t = a % b; a = b; b = t; }
+    return a;
+  }
+
+  function normalizeStep(N, M){
+    // 1..N-1 に正規化（0 は不可）
+    let s = M % N;
+    if (s < 0) s += N;
+    return s;
+  }
+
+  function pointsOnCircle(N, cx, cy, r){
+    // 角度  -pi/2 からスタート（12時方向）
+    const pts = [];
+    for(let k=0;k<N;k++){
+      const ang = -Math.PI/2 + TAU*(k/N);
+      pts.push({ x: cx + r*Math.cos(ang), y: cy + r*Math.sin(ang) });
+    }
+    return pts;
+  }
+
+  function buildCycle(N, step){
+    // 始点 0 から step で辿り、0に戻った瞬間で終了
+    // 返り値: 頂点インデックス列 [0, ..., 0]（最後の0を含める）
+    const seq = [0];
+    if (N <= 0) return seq;
+    if (step === 0) return seq; // 動けない
+    let cur = 0;
+    const seen = new Set([0]); // safety
+    while(true){
+      cur = (cur + step) % N;
+      seq.push(cur);
+      if(cur === 0) break;
+      // 念のため（理論上ここには来ないが異常系保険）
+      if (seen.has(cur)) break;
+      seen.add(cur);
+      if (seq.length > N + 2) break;
+    }
+    return seq;
+  }
+
+  function clearCanvas(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+  }
+
+  function draw(){
+    const Nraw = Number(elN.value);
+    const Mraw = Number(elM.value);
+
+    const N = Number.isFinite(Nraw) ? Math.floor(Nraw) : 0;
+    const M = Number.isFinite(Mraw) ? Math.floor(Mraw) : 0;
+
+    clearCanvas();
+
+    // 背景（スクショ時もそれっぽくなるよう薄く塗る）
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.0)'; // 透明のままにしたい場合はここを透明
+    ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.restore();
+
+    const cx = cv.width/2, cy = cv.height/2;
+    const r = Math.min(cv.width, cv.height) * (Number(elSize.value)/100) * 0.5;
+
+    // 入力チェック
+    if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1){
+      elStat.innerHTML = `<b>入力エラー</b><br/>N, M は自然数で入力してください。`;
+      return;
+    }
+    if (N < 3){
+      elStat.innerHTML = `<b>注意</b><br/>N=${N} は多角形になりません（N≥3推奨）。`;
+      // それでも点だけ描いておく
+    }
+
+    const step = normalizeStep(N, M);
+    const d = gcd(N, step);
+    const L = (N > 0) ? (N / d) : 0;
+
+    const pts = pointsOnCircle(N, cx, cy, r);
+
+    // 外接円
+    if (elShowCircle.checked){
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, TAU);
+      ctx.strokeStyle = 'rgba(255,255,255,.18)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 点＆番号
+    if (elShowPoints.checked && N >= 1){
+      ctx.save();
+      for(let i=0;i<N;i++){
+        ctx.beginPath();
+        ctx.arc(pts[i].x, pts[i].y, 5, 0, TAU);
+        ctx.fillStyle = 'rgba(255,255,255,.75)';
+        ctx.fill();
+
+        if (elShowLabels.checked){
+          ctx.fillStyle = 'rgba(255,255,255,.75)';
+          ctx.font = '14px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          // 少し外側へ
+          const vx = pts[i].x - cx, vy = pts[i].y - cy;
+          const len = Math.hypot(vx,vy) || 1;
+          const tx = pts[i].x + (vx/len)*16;
+          const ty = pts[i].y + (vy/len)*16;
+          ctx.fillText(String(i), tx, ty);
+        }
+      }
+      ctx.restore();
+    }
+
+    // step=0 は描けない
+    if (step === 0){
+      elStat.innerHTML =
+        `<b>描画不可</b><br/>M≡0 (mod N) になっています。M を N の倍数以外にしてください。<br/>（M=${M} → step=${step}）`;
+      return;
+    }
+
+    // 1成分のみ（0に戻った瞬間で終了）
+    const cycle = buildCycle(N, step);
+
+    // 辺を描画
+    if (cycle.length >= 2){
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pts[cycle[0]].x, pts[cycle[0]].y);
+      for(let i=1;i<cycle.length;i++){
+        const idx = cycle[i];
+        ctx.lineTo(pts[idx].x, pts[idx].y);
+      }
+      ctx.strokeStyle = 'rgba(96,165,250,.95)'; // アクセント
+      ctx.lineWidth = 3;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 情報表示（検証に使える最低限）
+    const reduced = step; // M mod N
+    elStat.innerHTML = `
+      <b>入力</b>: N=${N}, M=${M}<br/>
+      <b>正規化</b>: step = M mod N = ${reduced}${(reduced===0? '（描画不可）':'' )}<br/>
+      <b>gcd(N, step)</b> = ${d}<br/>
+      <b>閉路長 L</b> = N / gcd(N, step) = ${L}<br/>
+      <b>描画した頂点列</b>（始点0→0で停止）: 長さ ${cycle.length}（最後の0含む）
+    `;
+  }
+
+  // リアルタイム描画
+  const redraw = () => draw();
+  [elN, elM].forEach(el => {
+    el.addEventListener('input', redraw);
+    el.addEventListener('change', redraw);
+  });
+  [elSize, elShowPoints, elShowLabels, elShowCircle].forEach(el => {
+    el.addEventListener('input', redraw);
+    el.addEventListener('change', redraw);
+  });
+
+  btnReset.addEventListener('click', draw);
+
+  // スクリーンショット保存（PNG）
+  btnSave.addEventListener('click', () => {
+    // 現在のキャンバスを PNG 化
+    const url = cv.toDataURL('image/png');
+    const N = Math.floor(Number(elN.value));
+    const M = Math.floor(Number(elM.value));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `regular_N${N}_M${M}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  // 初回描画
+  draw();
+})();
+</script>
+</body>
+</html>
