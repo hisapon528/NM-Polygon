@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>正 N/M 角形（複数・アニメ・設定）</title>
+  <title>正 N/M 角形（複数・同時アニメ・設定）</title>
   <style>
     :root{
       --bg:#0b0f17; --panel:#111827; --fg:#e5e7eb; --muted:#9ca3af;
@@ -12,26 +12,43 @@
       --accent:#60a5fa;
     }
     *{ box-sizing:border-box; }
+    html, body{ height:100%; }
     body{
       margin:0;
       font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
       background: radial-gradient(1200px 700px at 30% 20%, #111827, #05070b);
       color:var(--fg);
-      min-height:100vh;
+      overflow: hidden; /* ④ 画面全体はスクロールさせない */
     }
-    .wrap{ display:grid; grid-template-columns: 420px 1fr; min-height:100vh; }
+
+    .wrap{
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      height:100vh;
+      width:100vw;
+    }
+
+    /* ④ 左パネルだけスクロール */
     .panel{
+      height:100vh;
+      overflow-y:auto;
       padding:16px;
       background: rgba(17,24,39,.86);
       border-right: 1px solid rgba(255,255,255,.08);
       backdrop-filter: blur(8px);
     }
+
     h1{ font-size:18px; margin:0 0 10px; }
     .desc{ font-size:12px; color:var(--muted); line-height:1.55; margin-bottom:12px; }
 
     .controlsTop{
       display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 14px;
+      position: sticky; top: 0; z-index: 5;
+      padding: 10px 0;
+      background: linear-gradient(to bottom, rgba(17,24,39,.96), rgba(17,24,39,.70));
+      backdrop-filter: blur(6px);
     }
+
     button{
       padding:10px 12px;
       border-radius:12px;
@@ -43,6 +60,7 @@
     }
     button:hover{ background: rgba(255,255,255,.10); }
     .btnPrimary{ border-color: rgba(96,165,250,.45); }
+    .btnToggle { border-color: rgba(52,211,153,.35); }
     .btnDanger{ border-color: rgba(248,113,113,.35); }
 
     .rows{
@@ -51,6 +69,7 @@
       border:1px solid var(--border);
       border-radius:14px;
       background: rgba(0,0,0,.18);
+      margin-bottom: 12px;
     }
 
     .rowCard{
@@ -66,9 +85,7 @@
     .rowCard .label{
       font-size:11px; color:var(--muted); margin-bottom:4px;
     }
-    .rowCard .field{
-      display:flex; flex-direction:column;
-    }
+    .rowCard .field{ display:flex; flex-direction:column; }
     input[type="number"]{
       width:100%;
       padding:10px;
@@ -115,12 +132,16 @@
     }
     .globalBox b{ color:#fff; }
 
+    /* ④ 右側は常に中央固定（左スクロールの影響を受けない） */
     .canvasWrap{
-      display:flex; align-items:center; justify-content:center;
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       padding:18px;
     }
 
-    /* 正方形を維持するコンテナ */
+    /* 正方形を維持 */
     .square{
       width: min(920px, calc(100vw - 470px));
       aspect-ratio: 1 / 1;
@@ -130,13 +151,9 @@
       display:flex; align-items:center; justify-content:center;
       overflow:hidden;
     }
-    canvas{
-      width:100%;
-      height:100%;
-      display:block;
-    }
+    canvas{ width:100%; height:100%; display:block; }
 
-    /* モーダル（設定） */
+    /* 設定モーダル */
     .modalOverlay{
       position:fixed; inset:0;
       background: rgba(0,0,0,.55);
@@ -185,52 +202,50 @@
     }
     .modalRow .left{ color: var(--fg); }
     .modalRow .right{ display:flex; gap:8px; align-items:center; }
-
     input[type="color"]{
       width:44px; height:32px;
       border:none; background: transparent; padding:0;
       cursor:pointer;
     }
-
     .tiny{
       font-size:11px;
       color: var(--muted);
       line-height: 1.5;
       margin-top: 8px;
     }
-
     .footerNote{
       margin-top:10px;
       font-size:11px;
       color:var(--muted);
       line-height:1.55;
+      padding-bottom: 16px;
     }
   </style>
 </head>
+
 <body>
 <div class="wrap">
   <div class="panel">
-    <h1>正 N/M 角形（複数・重ね描き）</h1>
+    <h1>正 N/M 角形（複数・同時アニメ）</h1>
     <div class="desc">
-      円周上の <b>N</b> 等分点から、ステップ幅 <b>M</b> で頂点を辿り、始点 <b>0</b> に戻った瞬間に終了します（成分の始点ずらしはしません）。<br/>
+      円周上の <b>N</b> 等分点から、ステップ幅 <b>M</b> で頂点を辿り、始点 <b>0</b> に戻った瞬間に終了します（始点ずらしはしません）。<br/>
       「＋」で複数の {N/M} を同一キャンバスに色分けで重ね描きできます。
     </div>
 
     <div class="controlsTop">
       <button id="addRow" class="btnPrimary">＋ 追加</button>
+      <button id="toggleAll" class="btnToggle">▶ 全アニメ再生</button>
       <button id="saveAll">スクリーンショット保存（PNG）</button>
-      <button id="redraw">再描画</button>
-      <button id="clearAnim" class="btnDanger">全アニメ停止</button>
     </div>
 
     <div class="rows" id="rows"></div>
-
     <div class="globalBox" id="globalInfo"></div>
 
     <div class="footerNote">
-      ※ 描画パネルは常に正方形比率（外接円が歪みません）。<br/>
-      ※ M は内部で <b>M mod N</b> に正規化して描画（0は不可）します。<br/>
-      ※ アニメは「線を順に描く」方式です（頂点の配置は固定）。
+      ✅ 左パネルのみスクロール（行をいくら増やしてもOK）<br/>
+      ✅ 右の描画は常に中央＆正方形（外接円が歪みません）<br/>
+      ※ M は内部で <b>M mod N</b> に正規化（0は不可）します。<br/>
+      ※ 全アニメ再生では、各行の辺数に応じて速度を自動調整し、同時に描き終わります。
     </div>
   </div>
 
@@ -296,9 +311,8 @@
   const globalInfoEl = document.getElementById('globalInfo');
 
   const btnAdd = document.getElementById('addRow');
+  const btnToggleAll = document.getElementById('toggleAll');
   const btnSave = document.getElementById('saveAll');
-  const btnRedraw = document.getElementById('redraw');
-  const btnClearAnim = document.getElementById('clearAnim');
 
   // Modal
   const modalOverlay = document.getElementById('modalOverlay');
@@ -313,7 +327,11 @@
 
   const TAU = Math.PI * 2;
 
-  // パレット（行が増えても見分けがつく程度の並び）
+  // ======= ②③ 全アニメの総時間（秒）
+  // 「ゆっくり作図が分かる」くらいに固定（必要なら後で変更可）
+  const TOTAL_ANIM_TIME = 8.0;
+
+  // 行のデフォルト色
   const palette = [
     "#60a5fa", "#f472b6", "#34d399", "#f59e0b", "#a78bfa",
     "#22d3ee", "#fb7185", "#84cc16", "#e879f9", "#f87171",
@@ -354,12 +372,10 @@
     return seq;
   }
 
-  // ====== キャンバスの「正方形・高解像度」対応 ======
+  // ====== キャンバスの高解像度対応 ======
   function resizeCanvasToDisplaySize(){
     const dpr = window.devicePixelRatio || 1;
-    // CSS上の表示サイズ
     const rect = cv.getBoundingClientRect();
-    // 正方形コンテナ内なので rectは正方形のはず
     const w = Math.max(1, Math.floor(rect.width * dpr));
     const h = Math.max(1, Math.floor(rect.height * dpr));
     if (cv.width !== w || cv.height !== h){
@@ -371,8 +387,12 @@
 
   // ====== 行データ ======
   let nextId = 1;
-  const rows = []; // RowState[]
+  const rows = [];
   let rafId = null;
+  let lastT = null;
+
+  // ③ 全体トグル状態
+  let globalPlaying = false;
 
   function newRowDefaults(){
     const idx = rows.length;
@@ -387,14 +407,35 @@
       lineColor: base,
       pointColor: base,
       linkColors: true,
+
+      // アニメ関連
       animPlaying: false,
-      animSpeedEdgesPerSec: 60, // 内部固定（必要なら後で設定に出せる）
-      animEdgeCount: 0, // 何本目まで描いたか（アニメ中）
+      animEdgeCount: 0,
+      animSpeedEdgesPerSec: 0,
     };
   }
 
   function rowTitle(r){
     return `#${r.id}  N=${r.N}, M=${r.M}`;
+  }
+
+  function getEdgesCount(r){
+    const N = r.N, M = r.M;
+    if (!Number.isInteger(N) || !Number.isInteger(M) || N < 3 || M < 1) return 0;
+    const step = normalizeStep(N, M);
+    if (step === 0) return 0;
+    const cycle = buildCycle(N, step);
+    return Math.max(0, cycle.length - 1);
+  }
+
+  // ②③ 全アニメ開始時に「同時終了」になるよう速度を設定
+  function prepareSpeedsForAll(){
+    for (const r of rows){
+      const edges = getEdgesCount(r);
+      r.animEdgeCount = 0;
+      // edges=0 の場合は速度不要
+      r.animSpeedEdgesPerSec = edges > 0 ? (edges / TOTAL_ANIM_TIME) : 0;
+    }
   }
 
   function createRowUI(r){
@@ -418,9 +459,10 @@
     inM.value = String(r.M);
     fieldM.appendChild(inM);
 
+    // 行ごとの再生停止（個別）
     const btnAnim = document.createElement('button');
     btnAnim.className = 'iconBtn';
-    btnAnim.title = '線を描くアニメーション 再生/停止';
+    btnAnim.title = 'この行のアニメ 再生/停止';
     btnAnim.textContent = '▶';
 
     const btnGear = document.createElement('button');
@@ -436,47 +478,6 @@
     const meta = document.createElement('div');
     meta.className = 'rowMeta';
 
-    // --- イベント ---
-    function applyN(){
-      const v = Math.floor(Number(inN.value));
-      r.N = Number.isFinite(v) ? v : r.N;
-      if (r.N < 1) r.N = 1;
-      inN.value = String(r.N);
-      // N変更は周期も変わるのでアニメ進捗リセット
-      r.animEdgeCount = 0;
-      scheduleDraw();
-    }
-    function applyM(){
-      const v = Math.floor(Number(inM.value));
-      r.M = Number.isFinite(v) ? v : r.M;
-      if (r.M < 1) r.M = 1;
-      inM.value = String(r.M);
-      r.animEdgeCount = 0;
-      scheduleDraw();
-    }
-    inN.addEventListener('input', () => { applyN(); });
-    inM.addEventListener('input', () => { applyM(); });
-    inN.addEventListener('change', applyN);
-    inM.addEventListener('change', applyM);
-
-    btnAnim.addEventListener('click', () => {
-      r.animPlaying = !r.animPlaying;
-      btnAnim.textContent = r.animPlaying ? '⏸' : '▶';
-      // 再生開始時に進捗ゼロから描き直したいならここで 0
-      // r.animEdgeCount = 0;
-      scheduleDraw();
-    });
-
-    btnGear.addEventListener('click', () => openSettings(r, card));
-
-    btnDel.addEventListener('click', () => {
-      const i = rows.findIndex(x => x.id === r.id);
-      if (i >= 0) rows.splice(i,1);
-      card.remove();
-      scheduleDraw();
-    });
-
-    // メタ更新
     function updateMeta(){
       const N = r.N, M = r.M;
       if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1){
@@ -494,9 +495,78 @@
       meta.innerHTML = `step=M mod N = ${step}, gcd(N,step)=${d}, 閉路長L=${L} ${sw}`;
     }
 
-    // 外から呼べるようにぶら下げ
+    function applyN(){
+      const v = Math.floor(Number(inN.value));
+      r.N = Number.isFinite(v) ? v : r.N;
+      if (r.N < 1) r.N = 1;
+      inN.value = String(r.N);
+
+      // 値変更でアニメはリセット（個別の再生を維持すると混乱しやすいので停止）
+      r.animPlaying = false;
+      r.animEdgeCount = 0;
+      card._setAnimIcon();
+      // 全体再生中だったら全体は停止状態に戻す
+      if (globalPlaying){
+        globalPlaying = false;
+        btnToggleAll.textContent = "▶ 全アニメ再生";
+      }
+      scheduleDraw();
+    }
+    function applyM(){
+      const v = Math.floor(Number(inM.value));
+      r.M = Number.isFinite(v) ? v : r.M;
+      if (r.M < 1) r.M = 1;
+      inM.value = String(r.M);
+
+      r.animPlaying = false;
+      r.animEdgeCount = 0;
+      card._setAnimIcon();
+      if (globalPlaying){
+        globalPlaying = false;
+        btnToggleAll.textContent = "▶ 全アニメ再生";
+      }
+      scheduleDraw();
+    }
+
+    inN.addEventListener('input', applyN);
+    inM.addEventListener('input', applyM);
+    inN.addEventListener('change', applyN);
+    inM.addEventListener('change', applyM);
+
+    btnAnim.addEventListener('click', () => {
+      // 個別再生は「この行だけ TOTAL_ANIM_TIME で描き終わる」速度にする
+      const edges = getEdgesCount(r);
+      r.animEdgeCount = (r.animEdgeCount > 0 && r.animEdgeCount < edges) ? r.animEdgeCount : 0;
+      r.animSpeedEdgesPerSec = edges > 0 ? (edges / TOTAL_ANIM_TIME) : 0;
+
+      r.animPlaying = !r.animPlaying;
+      card._setAnimIcon();
+
+      // 全体再生との二重管理を避ける：個別操作をしたら全体はOFF扱い
+      if (globalPlaying){
+        globalPlaying = false;
+        btnToggleAll.textContent = "▶ 全アニメ再生";
+      }
+
+      scheduleDraw();
+    });
+
+    btnGear.addEventListener('click', () => openSettings(r, card));
+
+    btnDel.addEventListener('click', () => {
+      const i = rows.findIndex(x => x.id === r.id);
+      if (i >= 0) rows.splice(i,1);
+      card.remove();
+      // 行削除で全体再生は止める（速度再計算が必要なので）
+      if (globalPlaying){
+        globalPlaying = false;
+        btnToggleAll.textContent = "▶ 全アニメ再生";
+      }
+      scheduleDraw();
+    });
+
     card._updateMeta = updateMeta;
-    card._setAnimIcon = () => btnAnim.textContent = r.animPlaying ? '⏸' : '▶';
+    card._setAnimIcon = () => { btnAnim.textContent = r.animPlaying ? '⏸' : '▶'; };
 
     card.appendChild(fieldN);
     card.appendChild(fieldM);
@@ -505,8 +575,8 @@
     card.appendChild(btnDel);
     card.appendChild(meta);
 
-    // 初期メタ
     updateMeta();
+    card._setAnimIcon();
     return card;
   }
 
@@ -526,7 +596,6 @@
     optPointColor.value = r.pointColor;
     optLinkColors.checked = r.linkColors;
 
-    // pointColor UIをlinkColorsに合わせて
     optPointColor.disabled = r.linkColors;
 
     modalOverlay.style.display = 'flex';
@@ -547,7 +616,6 @@
 
     r.linkColors = optLinkColors.checked;
 
-    // 色の反映
     r.lineColor = optLineColor.value;
 
     if (r.linkColors){
@@ -559,9 +627,9 @@
       r.pointColor = optPointColor.value;
     }
 
-    // 行メタ更新
     if (modalRowCard && modalRowCard._updateMeta) modalRowCard._updateMeta();
 
+    // 設定変更は描画に即反映
     scheduleDraw();
   }
 
@@ -579,18 +647,12 @@
     ctx.clearRect(0,0,cv.width,cv.height);
   }
 
-  function drawBackground(){
-    // 背景は透明（必要なら薄く塗る）
-    // ctx.fillStyle = 'rgba(0,0,0,0.0)';
-    // ctx.fillRect(0,0,cv.width,cv.height);
-  }
-
   function drawCircle(cx, cy, r){
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, TAU);
     ctx.strokeStyle = 'rgba(255,255,255,.18)';
-    ctx.lineWidth = Math.max(1, cv.width * 0.002); // 解像度依存
+    ctx.lineWidth = Math.max(1, cv.width * 0.002);
     ctx.stroke();
     ctx.restore();
   }
@@ -601,21 +663,22 @@
     const N = r.N, M = r.M;
     if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1) return;
 
-    // 点生成
     const pts = pointsOnCircle(N, cx, cy, radius);
 
     // 頂点
     if (r.showPoints && N >= 1){
       ctx.save();
-      const dot = Math.max(2, cv.width * 0.004); // 自動スケール
+      const dot = Math.max(2, cv.width * 0.004);
       for(let i=0;i<N;i++){
         ctx.beginPath();
         ctx.arc(pts[i].x, pts[i].y, dot, 0, TAU);
-        ctx.fillStyle = r.pointColor + "CC"; // 少し透過
+        ctx.fillStyle = r.pointColor;
+        ctx.globalAlpha = 0.80;
         ctx.fill();
+        ctx.globalAlpha = 1.0;
 
         if (r.showLabels){
-          ctx.fillStyle = 'rgba(255,255,255,.80)';
+          ctx.fillStyle = 'rgba(255,255,255,.85)';
           ctx.font = `${Math.max(10, cv.width*0.018)}px system-ui, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -629,40 +692,36 @@
       ctx.restore();
     }
 
-    if (N < 3) return; // それ以上は線は意味薄いので停止
+    if (N < 3) return;
 
     const step = normalizeStep(N, M);
-    if (step === 0) return; // 描けない
+    if (step === 0) return;
 
     const cycle = buildCycle(N, step); // [0,...,0]
-    if (cycle.length < 2) return;
-
-    // アニメ: どこまで線を描くか
     const totalEdges = cycle.length - 1;
+    if (totalEdges <= 0) return;
+
+    // 進捗：停止中は「完全表示」に戻す仕様にする（比較用途で見やすい）
+    // 個別停止で途中で止めたい場合は、下の else を r.animEdgeCount にする
     let edgesToDraw = totalEdges;
     if (r.animPlaying){
-      edgesToDraw = Math.max(0, Math.min(totalEdges, Math.floor(r.animEdgeCount)));
-    } else {
-      // 停止中でも「途中で止めた状態」を保持したいならこのまま
-      // 完全表示に戻したい場合は edgesToDraw = totalEdges;
-      edgesToDraw = Math.max(0, Math.min(totalEdges, Math.floor(r.animEdgeCount || totalEdges)));
-      if (!r.animEdgeCount) edgesToDraw = totalEdges;
+      edgesToDraw = Math.min(totalEdges, Math.floor(r.animEdgeCount));
     }
 
-    // 線
     if (edgesToDraw > 0){
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(pts[cycle[0]].x, pts[cycle[0]].y);
       for(let i=1;i<=edgesToDraw;i++){
-        const idx = cycle[i];
-        ctx.lineTo(pts[idx].x, pts[idx].y);
+        ctx.lineTo(pts[cycle[i]].x, pts[cycle[i]].y);
       }
-      ctx.strokeStyle = r.lineColor + "F2";
+      ctx.strokeStyle = r.lineColor;
+      ctx.globalAlpha = 0.95;
       ctx.lineWidth = Math.max(1.5, cv.width * 0.0045);
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.stroke();
+      ctx.globalAlpha = 1.0;
       ctx.restore();
     }
   }
@@ -671,29 +730,27 @@
     return rows.some(r => r.animPlaying);
   }
 
-  let lastT = null;
   function tick(t){
     if (lastT == null) lastT = t;
     const dt = (t - lastT) / 1000;
     lastT = t;
 
-    // 進捗更新
     for(const r of rows){
       if (!r.animPlaying) continue;
-      const N = r.N, M = r.M;
-      if (!Number.isInteger(N) || !Number.isInteger(M) || N < 3 || M < 1) continue;
-      const step = normalizeStep(N, M);
-      if (step === 0) continue;
-      const cycle = buildCycle(N, step);
-      const totalEdges = cycle.length - 1;
 
-      // 進捗
+      const edges = getEdgesCount(r);
+      if (edges <= 0){
+        r.animPlaying = false;
+        continue;
+      }
+
+      // ②③ 速度は行ごとに設定済み（全アニメ時は同時終了するように調整）
       r.animEdgeCount += (r.animSpeedEdgesPerSec * dt);
 
-      // 完了したら停止（最後まで描いたら止める）
-      if (r.animEdgeCount >= totalEdges + 0.0001){
-        r.animEdgeCount = totalEdges;
+      if (r.animEdgeCount >= edges){
+        r.animEdgeCount = edges;
         r.animPlaying = false;
+
         // UIアイコン更新
         const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
         if (card && card._setAnimIcon) card._setAnimIcon();
@@ -701,57 +758,67 @@
     }
 
     drawAll();
+    updateGlobalInfo();
 
     if (anyAnimationPlaying()){
       rafId = requestAnimationFrame(tick);
     } else {
       rafId = null;
       lastT = null;
+
+      // 全体再生中だった場合、完了したらトグルを「再生」に戻す
+      if (globalPlaying){
+        globalPlaying = false;
+        btnToggleAll.textContent = "▶ 全アニメ再生";
+      }
     }
   }
 
   function scheduleDraw(){
     drawAll();
+    updateGlobalInfo();
+
     if (anyAnimationPlaying() && !rafId){
       rafId = requestAnimationFrame(tick);
     }
-    updateGlobalInfo();
+    if (!anyAnimationPlaying() && rafId){
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      lastT = null;
+    }
   }
 
   function drawAll(){
     resizeCanvasToDisplaySize();
     clearCanvas();
-    drawBackground();
 
     const cx = cv.width/2, cy = cv.height/2;
     const radius = Math.min(cv.width, cv.height) * 0.82 * 0.5;
 
-    // 外接円（共通）
+    // 共通外接円
     drawCircle(cx, cy, radius);
 
-    // 行ごとに描く
     for(const r of rows){
       drawRow(r, cx, cy, radius);
     }
   }
 
   function updateGlobalInfo(){
-    // 全体情報：表示中の行数・アニメ中数など
     const total = rows.length;
     const visible = rows.filter(r => r.visible).length;
     const playing = rows.filter(r => r.animPlaying).length;
 
     globalInfoEl.innerHTML = `
       <b>行数</b>: ${total}（表示: ${visible}）<br/>
-      <b>アニメ再生中</b>: ${playing}<br/>
-      <b>保存</b>: 「スクリーンショット保存（PNG）」でキャンバス全体を保存できます。
+      <b>アニメ中</b>: ${playing}<br/>
+      <b>全体アニメ時間</b>: 約 ${TOTAL_ANIM_TIME.toFixed(1)} 秒（辺数に応じて速度を自動調整）<br/>
+      <b>保存</b>: 「スクリーンショット保存（PNG）」でキャンバス全体を保存
     `;
   }
 
-  // ====== 追加・削除・全停止など ======
+  // ====== 操作 ======
   function addRow(initial){
     const r = Object.assign(newRowDefaults(), initial || {});
-    // 行数に応じて色を再割当（追加順でパレット）
     const idx = rows.length;
     const base = palette[idx % palette.length];
     if (!initial || !initial.lineColor) r.lineColor = base;
@@ -761,35 +828,48 @@
     rows.push(r);
     const ui = createRowUI(r);
     rowsEl.appendChild(ui);
+
+    // 追加で全体再生は止める（速度再計算が必要なので）
+    if (globalPlaying){
+      globalPlaying = false;
+      btnToggleAll.textContent = "▶ 全アニメ再生";
+    }
+
     scheduleDraw();
   }
 
   btnAdd.addEventListener('click', () => addRow());
 
-  btnRedraw.addEventListener('click', () => {
-    // 再描画：進捗が0なら全面表示になる仕様にしているので、ここでは表示状態を揃えるだけ
-    scheduleDraw();
-  });
+  // ③ 全アニメ再生/停止トグル（同時開始・同時終了）
+  btnToggleAll.addEventListener('click', () => {
+    globalPlaying = !globalPlaying;
 
-  btnClearAnim.addEventListener('click', () => {
-    for(const r of rows){
-      r.animPlaying = false;
-      // 「停止して全表示に戻す」なら次行を有効化:
-      // r.animEdgeCount = 0;
-      const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
-      if (card && card._setAnimIcon) card._setAnimIcon();
+    if (globalPlaying){
+      // 全員を「同時に描き終える」速度でセット
+      prepareSpeedsForAll();
+      for (const r of rows){
+        const edges = getEdgesCount(r);
+        r.animPlaying = edges > 0;  // 辺がある行だけ動かす
+        // 個別ボタン表示更新
+        const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
+        if (card && card._setAnimIcon) card._setAnimIcon();
+      }
+      btnToggleAll.textContent = "⏸ 全アニメ停止";
+      scheduleDraw();
+    } else {
+      // 全停止（途中で止めたい場合は animEdgeCount を保持）
+      for (const r of rows){
+        r.animPlaying = false;
+        const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
+        if (card && card._setAnimIcon) card._setAnimIcon();
+      }
+      btnToggleAll.textContent = "▶ 全アニメ再生";
+      scheduleDraw();
     }
-    if (rafId){
-      cancelAnimationFrame(rafId);
-      rafId = null;
-      lastT = null;
-    }
-    scheduleDraw();
   });
 
   // スクリーンショット保存（PNG）
   btnSave.addEventListener('click', () => {
-    // 現在のキャンバスを PNG 化
     const url = cv.toDataURL('image/png');
     const a = document.createElement('a');
     a.href = url;
@@ -799,13 +879,10 @@
     a.remove();
   });
 
-  // リサイズ追従（正方形保ちつつ描画更新）
   window.addEventListener('resize', () => scheduleDraw());
 
   // ====== 初期行 ======
   addRow({ N: 7, M: 2 });
-  // 例：2つ目を初期から置きたいなら下を有効化
-  // addRow({ N: 9, M: 2 });
 
 })();
 </script>
