@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>正 N/M 角形（複数・同時アニメ・ズーム/パン・全体設定・選択表示）</title>
+  <title>正 N/M 角形</title>
   <style>
     :root{
       /* Theme (default: dark) */
@@ -267,8 +267,6 @@
     <div class="desc">
       円周上の <b>N</b> 等分点を、ステップ <b>M</b> で辿ります。<br/>
       作図は <b>始点（start）</b> を基準にし、<b>始点に戻った瞬間に終了</b>します。<br/>
-      キャンバス：<b>ホイール=ズーム</b>、<b>ドラッグ=移動</b>、<b>ダブルクリック=ビューリセット</b>。<br/>
-      図形をクリックすると、描画左上にその図形の <b>N/M</b> が表示されます（PNG保存にも写ります）。
     </div>
 
     <div class="controlsTop">
@@ -283,11 +281,7 @@
     <div class="globalBox" id="globalInfo"></div>
 
     <div class="footerNote">
-      ✅ 左パネルのみスクロール（行をいくら増やしてもOK）<br/>
-      ✅ 右の描画は常に中央＆正方形（外接円が歪みません）<br/>
       ※ M は内部で <b>M mod N</b> に正規化（0は不可）。始点は <b>start mod N</b> に正規化。<br/>
-      ※ 全アニメ再生は、各行の設定時間を使い、<b>同時に開始→同時に終了</b>するよう速度を自動調整します。<br/>
-      （各行の時間が異なる場合は、最大時間に合わせて全行を揃えます）
     </div>
   </div>
 
@@ -333,11 +327,6 @@
       </div>
 
       <div class="modalRow">
-        <div class="left">線と頂点を同色にする</div>
-        <div class="right"><input type="checkbox" id="optLinkColors"></div>
-      </div>
-
-      <div class="modalRow">
         <div class="left">アニメ時間（秒）</div>
         <div class="right">
           <input class="miniInput" type="number" id="optAnimTime" min="0.2" step="0.1" />
@@ -352,9 +341,7 @@
       </div>
 
       <div class="tiny">
-        ・始点は内部で <b>start mod N</b> に正規化（Nより大きい/負でもOK）。<br/>
-        ・作図は「始点に戻った瞬間に終了」。<br/>
-        ・線は「途中まで伸びる」アニメで描画します。
+        ・始点は内部で <b>start mod N</b> に正規化。<br/>
       </div>
     </div>
   </div>
@@ -386,9 +373,6 @@
         </div>
       </div>
 
-      <div class="tiny">
-        ・文字色は背景に応じて自動で見やすい色になります。<br/>
-        ・外接円の色はキャンバスに反映されます（PNG保存にも反映）。
       </div>
     </div>
   </div>
@@ -1416,3 +1400,4 @@
 </script>
 </body>
 </html>
+
