@@ -3,25 +3,29 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>正 N/M 角形</title>
+  <title>正 N/M 角形（複数・同時アニメ・ズーム/パン・全体設定・選択表示）</title>
   <style>
     :root{
-      /* Theme (default: dark) */
+      /* Theme vars (default: dark) */
       --bg:#0b0f17;
+      --bgImg: radial-gradient(1200px 700px at 30% 20%, rgba(17,24,39,1), rgba(5,7,11,1));
       --fg:#e5e7eb;
       --muted:#9ca3af;
+
       --panel: rgba(17,24,39,.86);
       --panelSolid:#111827;
+
       --border: rgba(255,255,255,.10);
       --border2: rgba(255,255,255,.14);
-
-      /* Canvas */
-      --circle: rgba(255,255,255,.18);
 
       /* Buttons */
       --btnBg: rgba(255,255,255,.06);
       --btnBgHover: rgba(255,255,255,.10);
       --btnBorder: rgba(255,255,255,.14);
+
+      /* Canvas */
+      --canvasBg: rgba(0,0,0,0); /* actual fill done in JS using this */
+      --circle: rgba(255,255,255,.18);
 
       /* HUD box */
       --hudBg: rgba(0,0,0,.55);
@@ -34,8 +38,8 @@
     body{
       margin:0;
       font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
-      background: radial-gradient(1200px 700px at 30% 20%, rgba(17,24,39,1), rgba(5,7,11,1));
       background-color: var(--bg);
+      background-image: var(--bgImg);
       color:var(--fg);
       overflow:hidden;
     }
@@ -82,9 +86,9 @@
     }
     button:hover{ background: var(--btnBgHover); }
 
-    .btnPrimary{ border-color: rgba(96,165,250,.45); }
-    .btnToggle { border-color: rgba(52,211,153,.35); }
-    .btnWarn   { border-color: rgba(251,191,36,.35); }
+    .btnPrimary{ border-color: rgba(96,165,250,.55); }
+    .btnToggle { border-color: rgba(52,211,153,.45); }
+    .btnWarn   { border-color: rgba(251,191,36,.55); }
 
     .rows{
       display:flex; flex-direction:column; gap:10px;
@@ -109,6 +113,7 @@
       font-size:11px; color:var(--muted); margin-bottom:4px;
     }
     .rowCard .field{ display:flex; flex-direction:column; }
+
     input[type="number"]{
       width:100%;
       padding:10px;
@@ -127,6 +132,7 @@
       background: rgba(255,255,255,.06);
       cursor:pointer;
       font-size:16px;
+      color: var(--fg);
     }
     .iconBtn:hover{ background: rgba(255,255,255,.10); }
 
@@ -170,14 +176,14 @@
       aspect-ratio: 1 / 1;
       border-radius:18px;
       border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.02);
+      background: transparent; /* actual bg is drawn on canvas, and also can be set here */
       display:flex; align-items:center; justify-content:center;
       overflow:hidden;
     }
     canvas{ width:100%; height:100%; display:block; cursor: grab; }
     canvas.dragging{ cursor: grabbing; }
 
-    /* Modal (row settings & global settings) */
+    /* Modal */
     .modalOverlay{
       position:fixed; inset:0;
       background: rgba(0,0,0,.55);
@@ -234,7 +240,7 @@
       cursor:pointer;
     }
     .miniInput{
-      width: 130px;
+      width: 150px;
       padding:8px;
       border-radius:10px;
       border:1px solid rgba(255,255,255,.12);
@@ -285,9 +291,9 @@
     <div class="footerNote">
       ✅ 左パネルのみスクロール（行をいくら増やしてもOK）<br/>
       ✅ 右の描画は常に中央＆正方形（外接円が歪みません）<br/>
-      ※ M は内部で <b>M mod N</b> に正規化（0は不可）。始点は <b>start mod N</b> に正規化。<br/>
-      ※ 全アニメ再生は、各行の設定時間を使い、<b>同時に開始→同時に終了</b>するよう速度を自動調整します。<br/>
-      （各行の時間が異なる場合は、最大時間に合わせて全行を揃えます）
+      ※ N,M が未入力（空欄）の行は描画しません。<br/>
+      ※ M は内部で <b>M mod N</b>、始点は <b>start mod N</b> に正規化。<br/>
+      ※ 全アニメ再生は最大時間に合わせて同期して終了します。
     </div>
   </div>
 
@@ -352,8 +358,7 @@
       </div>
 
       <div class="tiny">
-        ・始点は内部で <b>start mod N</b> に正規化（Nより大きい/負でもOK）。<br/>
-        ・作図は「始点に戻った瞬間に終了」。<br/>
+        ・始点は内部で <b>start mod N</b> に正規化（負でもOK）。<br/>
         ・線は「途中まで伸びる」アニメで描画します。
       </div>
     </div>
@@ -372,7 +377,7 @@
       <div class="modalRow">
         <div class="left">背景</div>
         <div class="right">
-          <select id="optTheme" class="miniInput" style="width:160px">
+          <select id="optTheme" class="miniInput" style="width:170px">
             <option value="dark">黒（ダーク）</option>
             <option value="light">白（ライト）</option>
           </select>
@@ -387,8 +392,9 @@
       </div>
 
       <div class="tiny">
-        ・文字色は背景に応じて自動で見やすい色になります。<br/>
-        ・外接円の色はキャンバスに反映されます（PNG保存にも反映）。
+        ・ライトは白単色（濃淡なし）で表示します。<br/>
+        ・ボタン文字が背景に同化しない配色に調整済みです。<br/>
+        ・キャンバス背景も含めてPNGに保存されます。
       </div>
     </div>
   </div>
@@ -431,8 +437,6 @@
 
   // Defaults
   const DEFAULT_ANIM_TIME = 8.0;
-  const DEFAULT_N = 7;
-  const DEFAULT_M = 2;
   const DEFAULT_START = 0;
 
   const palette = [
@@ -526,8 +530,11 @@
     const base = palette[idx % palette.length];
     return {
       id: nextId++,
-      N: DEFAULT_N,
-      M: DEFAULT_M,
+
+      // ★初期は空欄（未入力は描画しない）
+      N: null,
+      M: null,
+
       start: DEFAULT_START,
       animTimeSec: DEFAULT_ANIM_TIME,
 
@@ -545,36 +552,44 @@
   }
 
   function rowTitle(r){
-    return `#${r.id}  N=${r.N}, M=${r.M}`;
+    const n = (r.N == null ? "" : r.N);
+    const m = (r.M == null ? "" : r.M);
+    return `#${r.id}  N=${n}, M=${m}`;
   }
 
   function getCycleInfo(r){
     const N = r.N, M = r.M;
+
+    // 未入力は描画対象外
     if (!Number.isInteger(N) || !Number.isInteger(M) || N < 3 || M < 1) {
-      return { edges: 0, step: 0, L: 0, d: 0, startN: 0, cycle: [0] };
+      return { edges: 0, step: 0, L: 0, d: 0, startN: 0, cycle: [0], valid:false };
     }
+
     const step = normalizeStep(N, M);
     const startN = normalizeStart(N, r.start);
     if (step === 0) {
-      return { edges: 0, step, L: 0, d: gcd(N, step), startN, cycle: [startN] };
+      return { edges: 0, step, L: 0, d: gcd(N, step), startN, cycle: [startN], valid:true };
     }
     const cycle = buildCycle(N, step, startN);
     const edges = Math.max(0, cycle.length - 1);
     const d = gcd(N, step);
     const L = edges;
-    return { edges, step, L, d, startN, cycle };
+    return { edges, step, L, d, startN, cycle, valid:true };
   }
 
   function prepareSpeedsForAll(){
-    // Make all animations finish together: use max(animTimeSec)
-    const times = rows.map(r => Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME));
+    // Only rows that are valid will animate
+    const validRows = rows.filter(r => getCycleInfo(r).valid && getCycleInfo(r).edges > 0);
+
+    // finish together: use max(animTimeSec) among valid
+    const times = validRows.map(r => Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME));
     const Tglobal = times.length ? Math.max(...times) : DEFAULT_ANIM_TIME;
 
     for (const r of rows){
       const info = getCycleInfo(r);
       const edges = info.edges;
       r.animProgressEdges = 0.0;
-      r.animSpeedEdgesPerSec = edges > 0 ? (edges / Tglobal) : 0.0;
+      r.animSpeedEdgesPerSec = (info.valid && edges > 0) ? (edges / Tglobal) : 0.0;
     }
   }
 
@@ -588,16 +603,22 @@
     fieldN.className = 'field';
     fieldN.innerHTML = `<div class="label">N</div>`;
     const inN = document.createElement('input');
-    inN.type = 'number'; inN.min = '1'; inN.step = '1';
-    inN.value = String(r.N);
+    inN.type = 'number';
+    inN.min = '1';
+    inN.step = '1';
+    inN.placeholder = '（未入力）';
+    inN.value = (r.N == null ? '' : String(r.N));
     fieldN.appendChild(inN);
 
     const fieldM = document.createElement('div');
     fieldM.className = 'field';
     fieldM.innerHTML = `<div class="label">M</div>`;
     const inM = document.createElement('input');
-    inM.type = 'number'; inM.min = '1'; inM.step = '1';
-    inM.value = String(r.M);
+    inM.type = 'number';
+    inM.min = '1';
+    inM.step = '1';
+    inM.placeholder = '（未入力）';
+    inM.value = (r.M == null ? '' : String(r.M));
     fieldM.appendChild(inM);
 
     const btnAnim = document.createElement('button');
@@ -620,12 +641,16 @@
 
     function updateMeta(){
       const N = r.N, M = r.M;
-      if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1){
-        meta.textContent = `入力エラー（N,Mは自然数）`;
+      if (!Number.isInteger(N) || !Number.isInteger(M)){
+        meta.textContent = `未入力（N,Mを入れると描画します）`;
         return;
       }
       if (N < 3){
         meta.textContent = `注意: N=${N} は多角形になりません（N≥3推奨）`;
+        return;
+      }
+      if (M < 1){
+        meta.textContent = `注意: M は 1 以上`;
         return;
       }
       const info = getCycleInfo(r);
@@ -648,21 +673,40 @@
     }
 
     function applyN(){
-      const v = Math.floor(Number(inN.value));
-      r.N = Number.isFinite(v) ? v : r.N;
-      if (r.N < 1) r.N = 1;
-      inN.value = String(r.N);
+      const raw = inN.value.trim();
+      if (raw === ''){
+        r.N = null;
+        resetAnim();
+        stopGlobalIfNeeded();
+        card._updateMeta();
+        scheduleDraw();
+        return;
+      }
+      const v = Math.floor(Number(raw));
+      r.N = Number.isFinite(v) ? v : null;
+      if (r.N != null && r.N < 1) r.N = 1;
+      inN.value = (r.N == null ? '' : String(r.N));
 
       resetAnim();
       stopGlobalIfNeeded();
       card._updateMeta();
       scheduleDraw();
     }
+
     function applyM(){
-      const v = Math.floor(Number(inM.value));
-      r.M = Number.isFinite(v) ? v : r.M;
-      if (r.M < 1) r.M = 1;
-      inM.value = String(r.M);
+      const raw = inM.value.trim();
+      if (raw === ''){
+        r.M = null;
+        resetAnim();
+        stopGlobalIfNeeded();
+        card._updateMeta();
+        scheduleDraw();
+        return;
+      }
+      const v = Math.floor(Number(raw));
+      r.M = Number.isFinite(v) ? v : null;
+      if (r.M != null && r.M < 1) r.M = 1;
+      inM.value = (r.M == null ? '' : String(r.M));
 
       resetAnim();
       stopGlobalIfNeeded();
@@ -676,9 +720,18 @@
     inM.addEventListener('change', applyM);
 
     btnAnim.addEventListener('click', () => {
-      // Individual play: use its own animTimeSec
       const info = getCycleInfo(r);
       const edges = info.edges;
+
+      if (!info.valid || edges <= 0){
+        // 未入力/不適切なら再生しない
+        r.animPlaying = false;
+        r.animProgressEdges = 0.0;
+        card._setAnimIcon();
+        return;
+      }
+
+      // Individual play: use its own animTimeSec
       const T = Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME);
       r.animSpeedEdgesPerSec = edges > 0 ? (edges / T) : 0.0;
 
@@ -733,12 +786,10 @@
     rows.push(r);
     rowsEl.appendChild(createRowUI(r));
 
-    // Changing rows stops global play for safety
     if (globalPlaying){
       globalPlaying = false;
       btnToggleAll.textContent = "▶ 全アニメ再生";
     }
-
     scheduleDraw();
   }
 
@@ -807,7 +858,7 @@
     r.animPlaying = false;
     r.animProgressEdges = 0.0;
 
-    // Stop global play (needs recompute)
+    // Stop global play
     if (globalPlaying){
       globalPlaying = false;
       btnToggleAll.textContent = "▶ 全アニメ再生";
@@ -830,9 +881,6 @@
 
   // ===== Global settings modal =====
   function openGlobalSettings(){
-    // init UI from CSS vars
-    const circle = getComputedStyle(document.documentElement).getPropertyValue('--circle').trim();
-    // color input requires hex, so store separately and manage
     optCircleColor.value = themeState.circleHex;
     optTheme.value = themeState.theme;
     globalModalOverlay.style.display = 'flex';
@@ -849,51 +897,8 @@
   // Theme state
   const themeState = {
     theme: 'dark',          // 'dark' | 'light'
-    circleHex: '#b0b0b0',   // default circle
+    circleHex: '#b0b0b0',
   };
-
-  function applyTheme(){
-    const root = document.documentElement.style;
-
-    if (themeState.theme === 'light'){
-      root.setProperty('--bg', '#ffffff');
-      root.setProperty('--fg', '#111827');
-      root.setProperty('--muted', '#4b5563');
-      root.setProperty('--panel', 'rgba(243,244,246,.94)');
-      root.setProperty('--panelSolid', '#f3f4f6');
-      root.setProperty('--border', 'rgba(0,0,0,.10)');
-      root.setProperty('--border2', 'rgba(0,0,0,.14)');
-      root.setProperty('--btnBg', 'rgba(0,0,0,.04)');
-      root.setProperty('--btnBgHover', 'rgba(0,0,0,.08)');
-      root.setProperty('--btnBorder', 'rgba(0,0,0,.14)');
-
-      // HUD readable on light
-      root.setProperty('--hudBg', 'rgba(255,255,255,.75)');
-      root.setProperty('--hudFg', 'rgba(17,24,39,.95)');
-      root.setProperty('--hudBorder', 'rgba(0,0,0,.18)');
-    } else {
-      // dark
-      root.setProperty('--bg', '#0b0f17');
-      root.setProperty('--fg', '#e5e7eb');
-      root.setProperty('--muted', '#9ca3af');
-      root.setProperty('--panel', 'rgba(17,24,39,.86)');
-      root.setProperty('--panelSolid', '#111827');
-      root.setProperty('--border', 'rgba(255,255,255,.10)');
-      root.setProperty('--border2', 'rgba(255,255,255,.14)');
-      root.setProperty('--btnBg', 'rgba(255,255,255,.06)');
-      root.setProperty('--btnBgHover', 'rgba(255,255,255,.10)');
-      root.setProperty('--btnBorder', 'rgba(255,255,255,.14)');
-
-      root.setProperty('--hudBg', 'rgba(0,0,0,.55)');
-      root.setProperty('--hudFg', 'rgba(255,255,255,.92)');
-      root.setProperty('--hudBorder', 'rgba(255,255,255,.18)');
-    }
-
-    // circle
-    root.setProperty('--circle', hexToRgba(themeState.circleHex, 0.75));
-
-    scheduleDraw();
-  }
 
   function hexToRgba(hex, a){
     const h = hex.replace('#','').trim();
@@ -906,6 +911,64 @@
     return `rgba(${r},${g},${b},${a})`;
   }
 
+  function applyTheme(){
+    const root = document.documentElement.style;
+
+    if (themeState.theme === 'light'){
+      // ✅ 白単色（濃淡なし）にする
+      root.setProperty('--bg', '#ffffff');
+      root.setProperty('--bgImg', 'none');
+      root.setProperty('--fg', '#111827');
+      root.setProperty('--muted', '#374151');
+
+      // panel も白寄りで濃淡を弱める（白単色方針に合わせて極力シンプル）
+      root.setProperty('--panel', 'rgba(255,255,255,1)');
+      root.setProperty('--panelSolid', '#ffffff');
+      root.setProperty('--border', 'rgba(0,0,0,.10)');
+      root.setProperty('--border2', 'rgba(0,0,0,.14)');
+
+      // ✅ ボタン文字が同化しないように調整
+      root.setProperty('--btnBg', '#ffffff');
+      root.setProperty('--btnBgHover', 'rgba(0,0,0,.05)');
+      root.setProperty('--btnBorder', 'rgba(0,0,0,.28)');
+
+      // Canvas background must be white
+      root.setProperty('--canvasBg', '#ffffff');
+
+      // HUD readable on light
+      root.setProperty('--hudBg', 'rgba(255,255,255,.85)');
+      root.setProperty('--hudFg', 'rgba(17,24,39,.95)');
+      root.setProperty('--hudBorder', 'rgba(0,0,0,.18)');
+
+      // circle
+      root.setProperty('--circle', hexToRgba(themeState.circleHex, 0.75));
+    } else {
+      // dark
+      root.setProperty('--bg', '#0b0f17');
+      root.setProperty('--bgImg', 'radial-gradient(1200px 700px at 30% 20%, rgba(17,24,39,1), rgba(5,7,11,1))');
+      root.setProperty('--fg', '#e5e7eb');
+      root.setProperty('--muted', '#9ca3af');
+
+      root.setProperty('--panel', 'rgba(17,24,39,.86)');
+      root.setProperty('--panelSolid', '#111827');
+      root.setProperty('--border', 'rgba(255,255,255,.10)');
+      root.setProperty('--border2', 'rgba(255,255,255,.14)');
+
+      root.setProperty('--btnBg', 'rgba(255,255,255,.06)');
+      root.setProperty('--btnBgHover', 'rgba(255,255,255,.10)');
+      root.setProperty('--btnBorder', 'rgba(255,255,255,.14)');
+
+      root.setProperty('--canvasBg', 'rgba(0,0,0,0)'); // actual fill will use body bg feel; we still paint a dark-ish backdrop below
+      root.setProperty('--hudBg', 'rgba(0,0,0,.55)');
+      root.setProperty('--hudFg', 'rgba(255,255,255,.92)');
+      root.setProperty('--hudBorder', 'rgba(255,255,255,.18)');
+
+      root.setProperty('--circle', hexToRgba(themeState.circleHex, 0.75));
+    }
+
+    scheduleDraw();
+  }
+
   optTheme.addEventListener('change', () => {
     themeState.theme = optTheme.value;
     applyTheme();
@@ -916,8 +979,15 @@
   });
 
   // ===== Drawing =====
-  function clearCanvas(){
-    ctx.clearRect(0,0,cv.width,cv.height);
+  function clearAndFillCanvas(){
+    // Always fill to ensure screenshots include background
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvasBg').trim();
+    // Dark mode: use a subtle dark fill (since --canvasBg is transparent by design)
+    const fill = (themeState.theme === 'dark') ? '#0b0f17' : (bg || '#ffffff');
+
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = fill;
+    ctx.fillRect(0,0,cv.width,cv.height);
   }
 
   function drawCircle(cx, cy, r){
@@ -933,15 +1003,16 @@
   function drawRow(r, cx, cy, radius){
     if (!r.visible) return;
 
-    const N = r.N, M = r.M;
-    if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1) return;
+    const info = getCycleInfo(r);
+    if (!info.valid) return;
 
+    const N = r.N, M = r.M;
     const pts = pointsOnCircle(N, cx, cy, radius);
 
     // vertices
     if (r.showPoints && N >= 1){
       ctx.save();
-      const dot = Math.max(2, cv.width * 0.004) / view.scale; // keep dot stable on zoom
+      const dot = Math.max(2, cv.width * 0.004) / view.scale; // stable on zoom
       for(let i=0;i<N;i++){
         ctx.beginPath();
         ctx.arc(pts[i].x, pts[i].y, dot, 0, TAU);
@@ -968,17 +1039,10 @@
       ctx.restore();
     }
 
-    if (N < 3) return;
-
-    const step = normalizeStep(N, M);
-    if (step === 0) return;
-
-    const startN = normalizeStart(N, r.start);
-    const cycle = buildCycle(N, step, startN);
-    const totalEdges = cycle.length - 1;
+    const totalEdges = info.edges;
     if (totalEdges <= 0) return;
 
-    // "growing line" animation
+    // growing line animation
     const p = r.animPlaying
       ? Math.max(0, Math.min(totalEdges, r.animProgressEdges))
       : totalEdges;
@@ -987,9 +1051,10 @@
     const frac  = p - whole;
     if (whole <= 0 && frac <= 0) return;
 
+    const cycle = info.cycle;
+
     ctx.save();
     ctx.beginPath();
-
     ctx.moveTo(pts[cycle[0]].x, pts[cycle[0]].y);
 
     for(let i=1; i<=whole; i++){
@@ -1008,7 +1073,7 @@
 
     ctx.strokeStyle = r.lineColor;
     ctx.globalAlpha = 0.95;
-    ctx.lineWidth = Math.max(1.5, cv.width * 0.0045) / view.scale; // stable width on zoom
+    ctx.lineWidth = Math.max(1.5, cv.width * 0.0045) / view.scale; // stable
     ctx.lineJoin = 'round';
     ctx.lineCap  = 'round';
     ctx.stroke();
@@ -1026,12 +1091,25 @@
     ctx.restore();
   }
 
+  function roundRect(ctx, x, y, w, h, r){
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr, y);
+    ctx.arcTo(x+w, y, x+w, y+h, rr);
+    ctx.arcTo(x+w, y+h, x, y+h, rr);
+    ctx.arcTo(x, y+h, x, y, rr);
+    ctx.arcTo(x, y, x+w, y, rr);
+    ctx.closePath();
+  }
+
   function drawHUD(){
     if (selectedRowId == null) return;
     const r = rows.find(x => x.id === selectedRowId);
     if (!r) return;
 
     const info = getCycleInfo(r);
+    if (!info.valid) return;
+
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--hudBg').trim();
     const fg = getComputedStyle(document.documentElement).getPropertyValue('--hudFg').trim();
     const bd = getComputedStyle(document.documentElement).getPropertyValue('--hudBorder').trim();
@@ -1039,20 +1117,22 @@
     const pad = 10;
     const x = 12, y = 12;
     const fontSize = Math.max(12, cv.width * 0.018);
+
     ctx.save();
     ctx.setTransform(1,0,0,1,0,0); // screen coords
-    ctx.font = `700 ${fontSize}px system-ui, sans-serif`;
+
     const line1 = `N=${r.N}, M=${r.M}`;
     const line2 = `start=${info.startN}, step=${info.step}, L=${info.L}`;
-    const w = Math.max(
-      ctx.measureText(line1).width,
-      (ctx.font = `500 ${Math.max(11, fontSize*0.85)}px system-ui, sans-serif`, ctx.measureText(line2).width)
-    );
 
-    const boxW = w + pad*2;
+    ctx.font = `700 ${fontSize}px system-ui, sans-serif`;
+    const w1 = ctx.measureText(line1).width;
+    ctx.font = `500 ${Math.max(11, fontSize*0.85)}px system-ui, sans-serif`;
+    const w2 = ctx.measureText(line2).width;
+
+    const w = Math.max(w1, w2);
+    const boxW = w + pad*2 + 10;
     const boxH = pad*2 + fontSize + Math.max(11, fontSize*0.85) + 10;
 
-    // Box
     roundRect(ctx, x, y, boxW, boxH, 10);
     ctx.fillStyle = bg;
     ctx.fill();
@@ -1060,7 +1140,7 @@
     ctx.strokeStyle = bd;
     ctx.stroke();
 
-    // Color accent bar
+    // Accent bar
     ctx.fillStyle = r.lineColor;
     ctx.globalAlpha = 0.85;
     roundRect(ctx, x+6, y+6, 10, boxH-12, 6);
@@ -1078,20 +1158,9 @@
     ctx.restore();
   }
 
-  function roundRect(ctx, x, y, w, h, r){
-    const rr = Math.min(r, w/2, h/2);
-    ctx.beginPath();
-    ctx.moveTo(x+rr, y);
-    ctx.arcTo(x+w, y, x+w, y+h, rr);
-    ctx.arcTo(x+w, y+h, x, y+h, rr);
-    ctx.arcTo(x, y+h, x, y, rr);
-    ctx.arcTo(x, y, x+w, y, rr);
-    ctx.closePath();
-  }
-
   function drawAll(){
     resizeCanvasToDisplaySize();
-    clearCanvas();
+    clearAndFillCanvas();
 
     const cx = cv.width/2;
     const cy = cv.height/2;
@@ -1106,10 +1175,9 @@
     for(const r of rows){
       drawRow(r, 0, 0, baseRadius);
     }
-
     ctx.restore();
 
-    // HUD in screen coordinates (included in screenshot)
+    // HUD
     drawHUD();
   }
 
@@ -1118,15 +1186,16 @@
     const visible = rows.filter(r => r.visible).length;
     const playing = rows.filter(r => r.animPlaying).length;
 
-    const tmax = rows.length
-      ? Math.max(...rows.map(r => Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME)))
+    const validRows = rows.filter(r => getCycleInfo(r).valid);
+    const tmax = validRows.length
+      ? Math.max(...validRows.map(r => Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME)))
       : DEFAULT_ANIM_TIME;
 
     globalInfoEl.innerHTML = `
       <b>行数</b>: ${total}（表示: ${visible}）<br/>
       <b>アニメ中</b>: ${playing} / ${total}<br/>
-      <b>全体同時再生の所要時間</b>: 約 ${tmax.toFixed(1)} 秒（最大の行に合わせて同期）<br/>
-      <b>選択</b>: 図形をクリック → 右上ではなく<b>キャンバス左上</b>に N/M を表示（PNGにも写る）
+      <b>全体同時再生の所要時間</b>: 約 ${tmax.toFixed(1)} 秒（最大時間に同期）<br/>
+      <b>注意</b>: N/M が空欄の行は描画しません
     `;
   }
 
@@ -1145,7 +1214,7 @@
 
       const info = getCycleInfo(r);
       const edges = info.edges;
-      if (edges <= 0){
+      if (!info.valid || edges <= 0){
         r.animPlaying = false;
         continue;
       }
@@ -1201,7 +1270,6 @@
   }
 
   function screenToWorld(px, py){
-    // Inverse of: screen = center + pan + scale*world
     const cx = cv.width/2;
     const cy = cv.height/2;
     const wx = (px - cx - view.panX) / view.scale;
@@ -1222,24 +1290,20 @@
   }
 
   function rowHitTest(worldX, worldY){
-    // Use full (completed) polyline for hit test
     const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5;
     const best = { id: null, d: Infinity };
 
     for (const r of rows){
       if (!r.visible) continue;
 
-      const N = r.N, M = r.M;
-      if (!Number.isInteger(N) || !Number.isInteger(M) || N < 3 || M < 1) continue;
-
-      const step = normalizeStep(N, M);
-      if (step === 0) continue;
-
       const info = getCycleInfo(r);
+      if (!info.valid) continue;
+      if (info.edges <= 0) continue;
+
+      const N = r.N;
       const cycle = info.cycle;
       const pts = pointsOnCircle(N, 0, 0, baseRadius);
 
-      // Distance to each segment
       for (let i=0;i<cycle.length-1;i++){
         const a = pts[cycle[i]];
         const b = pts[cycle[i+1]];
@@ -1251,8 +1315,7 @@
       }
     }
 
-    // threshold in world units (stable in screen px)
-    const thresholdPx = 12; // px
+    const thresholdPx = 12;
     const thresholdWorld = thresholdPx / view.scale;
     if (best.id != null && best.d <= thresholdWorld) return best.id;
     return null;
@@ -1317,18 +1380,15 @@
   });
 
   cv.addEventListener('click', (e) => {
-    // If it was a drag, ignore click selection
     if (dragMoved) return;
-
     const p = getCanvasPixelPos(e);
     const w = screenToWorld(p.x, p.y);
-    const hit = rowHitTest(w.x, w.y);
-    selectedRowId = hit; // can be null to hide
+    selectedRowId = rowHitTest(w.x, w.y);
     scheduleDraw();
   });
 
   // ===== Controls =====
-  btnAdd.addEventListener('click', () => addRow());
+  btnAdd.addEventListener('click', () => addRow()); // default blank row
 
   btnToggleAll.addEventListener('click', () => {
     globalPlaying = !globalPlaying;
@@ -1337,7 +1397,7 @@
       prepareSpeedsForAll();
       for (const r of rows){
         const info = getCycleInfo(r);
-        r.animPlaying = info.edges > 0;
+        r.animPlaying = info.valid && info.edges > 0;
         r.animProgressEdges = 0.0;
 
         const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
@@ -1357,7 +1417,6 @@
   });
 
   btnSave.addEventListener('click', () => {
-    // HUD is drawn on canvas, so it will be included automatically
     const url = cv.toDataURL('image/png');
     const a = document.createElement('a');
     a.href = url;
@@ -1368,7 +1427,6 @@
   });
 
   btnReset.addEventListener('click', () => {
-    // Reset everything to initial state (including theme & circle)
     // Stop animations
     globalPlaying = false;
     btnToggleAll.textContent = "▶ 全アニメ再生";
@@ -1378,12 +1436,10 @@
       lastT = null;
     }
 
-    // Clear rows UI + data
+    // Clear rows
     rows.splice(0, rows.length);
     rowsEl.innerHTML = '';
     selectedRowId = null;
-
-    // Reset id counter
     nextId = 1;
 
     // Reset view
@@ -1396,8 +1452,8 @@
     optCircleColor.value = themeState.circleHex;
     applyTheme();
 
-    // Add initial row
-    addRow({ N: DEFAULT_N, M: DEFAULT_M, start: DEFAULT_START, animTimeSec: DEFAULT_ANIM_TIME });
+    // Add initial blank row (N/M empty)
+    addRow({ N: null, M: null, start: DEFAULT_START, animTimeSec: DEFAULT_ANIM_TIME });
     scheduleDraw();
   });
 
@@ -1406,11 +1462,11 @@
   // ===== Init =====
   window.addEventListener('resize', () => scheduleDraw());
 
-  // Set default theme/circle
+  // Default theme/circle
   applyTheme();
 
-  // Initial row
-  addRow({ N: DEFAULT_N, M: DEFAULT_M, start: DEFAULT_START, animTimeSec: DEFAULT_ANIM_TIME });
+  // Initial blank row
+  addRow({ N: null, M: null, start: DEFAULT_START, animTimeSec: DEFAULT_ANIM_TIME });
 
 })();
 </script>
