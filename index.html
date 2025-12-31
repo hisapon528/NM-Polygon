@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>正 N/M 角形（複数・同時アニメ・ズーム/パン・全体設定・選択表示）</title>
+
+  <!-- ✅ TeX風フォント（KaTeXフォント）を読み込み：Canvasでも KaTeX_Main が使える -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+
   <style>
     :root{
       /* Theme vars (default: dark) */
@@ -23,8 +27,13 @@
       --btnBgHover: rgba(255,255,255,.10);
       --btnBorder: rgba(255,255,255,.14);
 
+      /* ✅ controls/boxes をテーマで統一（ライト時の「浮き」抑制に必須） */
+      --controlsBg: linear-gradient(to bottom, var(--panelSolid), rgba(17,24,39,.60));
+      --boxBg: rgba(0,0,0,.18);
+      --cardBg: rgba(255,255,255,.04);
+
       /* Canvas */
-      --canvasBg: rgba(0,0,0,0); /* actual fill done in JS using this */
+      --canvasBg: rgba(0,0,0,0); /* actual fill done in JS */
       --circle: rgba(255,255,255,.18);
 
       /* HUD box */
@@ -70,9 +79,15 @@
       display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 14px;
       position: sticky; top: 0; z-index: 5;
       padding: 10px 0;
-      background: linear-gradient(to bottom, var(--panelSolid), rgba(17,24,39,.60));
-      backdrop-filter: blur(6px);
+
+      /* ✅ テーマ変数で制御（ライト時は完全ベタ白へ） */
+      background: var(--controlsBg);
+
       border-bottom: 1px solid rgba(255,255,255,.06);
+
+      /* ✅ 浮き出し防止 */
+      box-shadow:none;
+      backdrop-filter:none;
     }
 
     button{
@@ -95,7 +110,10 @@
       padding:10px;
       border:1px solid var(--border);
       border-radius:14px;
-      background: rgba(0,0,0,.18);
+
+      /* ✅ テーマ変数で制御 */
+      background: var(--boxBg);
+
       margin-bottom: 12px;
     }
 
@@ -107,7 +125,12 @@
       padding:10px;
       border:1px solid rgba(255,255,255,.08);
       border-radius:14px;
-      background: rgba(255,255,255,.04);
+
+      /* ✅ テーマ変数で制御 */
+      background: var(--cardBg);
+
+      /* ✅ 浮き出し防止 */
+      box-shadow:none;
     }
     .rowCard .label{
       font-size:11px; color:var(--muted); margin-bottom:4px;
@@ -133,6 +156,9 @@
       cursor:pointer;
       font-size:16px;
       color: var(--fg);
+
+      /* ✅ 浮き出し防止 */
+      box-shadow:none;
     }
     .iconBtn:hover{ background: rgba(255,255,255,.10); }
 
@@ -156,10 +182,16 @@
       padding:12px;
       border:1px solid var(--border);
       border-radius:14px;
-      background: rgba(0,0,0,.18);
+
+      /* ✅ テーマ変数で制御 */
+      background: var(--boxBg);
+
       font-size:12px;
       line-height:1.65;
       color: var(--muted);
+
+      /* ✅ 浮き出し防止 */
+      box-shadow:none;
     }
     .globalBox b{ color:var(--fg); }
 
@@ -176,7 +208,7 @@
       aspect-ratio: 1 / 1;
       border-radius:18px;
       border:1px solid rgba(255,255,255,.10);
-      background: transparent; /* actual bg is drawn on canvas, and also can be set here */
+      background: transparent;
       display:flex; align-items:center; justify-content:center;
       overflow:hidden;
     }
@@ -291,7 +323,7 @@
     <div class="footerNote">
       ✅ 左パネルのみスクロール（行をいくら増やしてもOK）<br/>
       ✅ 右の描画は常に中央＆正方形（外接円が歪みません）<br/>
-      ※ N,M が未入力（空欄）の行は描画しません。<br/>
+      ※ N,M が空欄の行は描画しません。<br/>
       ※ M は内部で <b>M mod N</b>、始点は <b>start mod N</b> に正規化。<br/>
       ※ 全アニメ再生は最大時間に合わせて同期して終了します。
     </div>
@@ -393,8 +425,7 @@
 
       <div class="tiny">
         ・ライトは白単色（濃淡なし）で表示します。<br/>
-        ・ボタン文字が背景に同化しない配色に調整済みです。<br/>
-        ・キャンバス背景も含めてPNGに保存されます。
+        ・HUDは巨大文字＆TeX風フォント（KaTeX）でキャンバスに描き、PNGにも写ります。
       </div>
     </div>
   </div>
@@ -531,7 +562,7 @@
     return {
       id: nextId++,
 
-      // ★初期は空欄（未入力は描画しない）
+      // 初期は空欄（未入力は描画しない）
       N: null,
       M: null,
 
@@ -724,7 +755,6 @@
       const edges = info.edges;
 
       if (!info.valid || edges <= 0){
-        // 未入力/不適切なら再生しない
         r.animPlaying = false;
         r.animProgressEdges = 0.0;
         card._setAnimIcon();
@@ -915,32 +945,35 @@
     const root = document.documentElement.style;
 
     if (themeState.theme === 'light'){
-      // ✅ 白単色（濃淡なし）にする
+      // ✅ 白単色（濃淡なし）
       root.setProperty('--bg', '#ffffff');
       root.setProperty('--bgImg', 'none');
       root.setProperty('--fg', '#111827');
       root.setProperty('--muted', '#374151');
 
-      // panel も白寄りで濃淡を弱める（白単色方針に合わせて極力シンプル）
-      root.setProperty('--panel', 'rgba(255,255,255,1)');
+      // ✅ パネル/カード/ボックス：全部ベタ白に統一（浮き防止）
+      root.setProperty('--panel', '#ffffff');
       root.setProperty('--panelSolid', '#ffffff');
-      root.setProperty('--border', 'rgba(0,0,0,.10)');
-      root.setProperty('--border2', 'rgba(0,0,0,.14)');
+      root.setProperty('--controlsBg', '#ffffff');
+      root.setProperty('--boxBg', '#ffffff');
+      root.setProperty('--cardBg', '#ffffff');
 
-      // ✅ ボタン文字が同化しないように調整
+      root.setProperty('--border', 'rgba(0,0,0,.12)');
+      root.setProperty('--border2', 'rgba(0,0,0,.16)');
+
+      // ✅ ボタン文字が同化しないよう調整
       root.setProperty('--btnBg', '#ffffff');
-      root.setProperty('--btnBgHover', 'rgba(0,0,0,.05)');
-      root.setProperty('--btnBorder', 'rgba(0,0,0,.28)');
+      root.setProperty('--btnBgHover', 'rgba(0,0,0,.06)');
+      root.setProperty('--btnBorder', 'rgba(0,0,0,.30)');
 
-      // Canvas background must be white
+      // Canvas background should be white
       root.setProperty('--canvasBg', '#ffffff');
 
       // HUD readable on light
-      root.setProperty('--hudBg', 'rgba(255,255,255,.85)');
-      root.setProperty('--hudFg', 'rgba(17,24,39,.95)');
-      root.setProperty('--hudBorder', 'rgba(0,0,0,.18)');
+      root.setProperty('--hudBg', 'rgba(255,255,255,.92)');
+      root.setProperty('--hudFg', 'rgba(17,24,39,.98)');
+      root.setProperty('--hudBorder', 'rgba(0,0,0,.20)');
 
-      // circle
       root.setProperty('--circle', hexToRgba(themeState.circleHex, 0.75));
     } else {
       // dark
@@ -958,7 +991,13 @@
       root.setProperty('--btnBgHover', 'rgba(255,255,255,.10)');
       root.setProperty('--btnBorder', 'rgba(255,255,255,.14)');
 
-      root.setProperty('--canvasBg', 'rgba(0,0,0,0)'); // actual fill will use body bg feel; we still paint a dark-ish backdrop below
+      // ✅ 追加した変数を dark に戻す
+      root.setProperty('--controlsBg', 'linear-gradient(to bottom, var(--panelSolid), rgba(17,24,39,.60))');
+      root.setProperty('--boxBg', 'rgba(0,0,0,.18)');
+      root.setProperty('--cardBg', 'rgba(255,255,255,.04)');
+
+      root.setProperty('--canvasBg', 'rgba(0,0,0,0)');
+
       root.setProperty('--hudBg', 'rgba(0,0,0,.55)');
       root.setProperty('--hudFg', 'rgba(255,255,255,.92)');
       root.setProperty('--hudBorder', 'rgba(255,255,255,.18)');
@@ -980,11 +1019,9 @@
 
   // ===== Drawing =====
   function clearAndFillCanvas(){
-    // Always fill to ensure screenshots include background
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvasBg').trim();
-    // Dark mode: use a subtle dark fill (since --canvasBg is transparent by design)
-    const fill = (themeState.theme === 'dark') ? '#0b0f17' : (bg || '#ffffff');
-
+    // Always fill so screenshots include background.
+    // ✅ ライトは必ず純白
+    const fill = (themeState.theme === 'dark') ? '#0b0f17' : '#ffffff';
     ctx.setTransform(1,0,0,1,0,0);
     ctx.fillStyle = fill;
     ctx.fillRect(0,0,cv.width,cv.height);
@@ -1006,7 +1043,7 @@
     const info = getCycleInfo(r);
     if (!info.valid) return;
 
-    const N = r.N, M = r.M;
+    const N = r.N;
     const pts = pointsOnCircle(N, cx, cy, radius);
 
     // vertices
@@ -1073,7 +1110,7 @@
 
     ctx.strokeStyle = r.lineColor;
     ctx.globalAlpha = 0.95;
-    ctx.lineWidth = Math.max(1.5, cv.width * 0.0045) / view.scale; // stable
+    ctx.lineWidth = Math.max(1.5, cv.width * 0.0045) / view.scale;
     ctx.lineJoin = 'round';
     ctx.lineCap  = 'round';
     ctx.stroke();
@@ -1102,6 +1139,7 @@
     ctx.closePath();
   }
 
+  // ✅ HUD：巨大文字＋TeX風フォント
   function drawHUD(){
     if (selectedRowId == null) return;
     const r = rows.find(x => x.id === selectedRowId);
@@ -1114,46 +1152,54 @@
     const fg = getComputedStyle(document.documentElement).getPropertyValue('--hudFg').trim();
     const bd = getComputedStyle(document.documentElement).getPropertyValue('--hudBorder').trim();
 
-    const pad = 10;
     const x = 12, y = 12;
-    const fontSize = Math.max(12, cv.width * 0.018);
+
+    // ✅ キャンバス幅に合わせて「目一杯」大きく（上限も高め）
+    const fontSize  = Math.min(110, Math.max(34, cv.width * 0.060));
+    const fontSize2 = Math.min(86,  Math.max(26, fontSize * 0.72));
+    const pad = Math.round(fontSize * 0.35);
+
+    // ✅ TeX風フォント（KaTeX）
+    const texFont = `"KaTeX_Main","KaTeX_Math","Times New Roman",serif`;
+
+    const line1 = `N=${r.N},  M=${r.M}`;
+    const line2 = `start=${info.startN}, step=${info.step}, L=${info.L}`;
 
     ctx.save();
     ctx.setTransform(1,0,0,1,0,0); // screen coords
 
-    const line1 = `N=${r.N}, M=${r.M}`;
-    const line2 = `start=${info.startN}, step=${info.step}, L=${info.L}`;
-
-    ctx.font = `700 ${fontSize}px system-ui, sans-serif`;
+    ctx.font = `700 ${fontSize}px ${texFont}`;
     const w1 = ctx.measureText(line1).width;
-    ctx.font = `500 ${Math.max(11, fontSize*0.85)}px system-ui, sans-serif`;
+
+    ctx.font = `600 ${fontSize2}px ${texFont}`;
     const w2 = ctx.measureText(line2).width;
 
     const w = Math.max(w1, w2);
     const boxW = w + pad*2 + 10;
-    const boxH = pad*2 + fontSize + Math.max(11, fontSize*0.85) + 10;
+    const boxH = pad*2 + fontSize + fontSize2 + Math.round(fontSize*0.35);
 
-    roundRect(ctx, x, y, boxW, boxH, 10);
+    roundRect(ctx, x, y, boxW, boxH, 14);
     ctx.fillStyle = bg;
     ctx.fill();
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.strokeStyle = bd;
     ctx.stroke();
 
     // Accent bar
     ctx.fillStyle = r.lineColor;
-    ctx.globalAlpha = 0.85;
-    roundRect(ctx, x+6, y+6, 10, boxH-12, 6);
+    ctx.globalAlpha = 0.88;
+    roundRect(ctx, x+8, y+8, Math.max(12, fontSize*0.16), boxH-16, 10);
     ctx.fill();
     ctx.globalAlpha = 1.0;
 
     // Text
     ctx.fillStyle = fg;
-    ctx.font = `700 ${fontSize}px system-ui, sans-serif`;
-    ctx.fillText(line1, x + pad + 10, y + pad + fontSize - 2);
 
-    ctx.font = `500 ${Math.max(11, fontSize*0.85)}px system-ui, sans-serif`;
-    ctx.fillText(line2, x + pad + 10, y + pad + fontSize + Math.max(11, fontSize*0.85) + 4);
+    ctx.font = `700 ${fontSize}px ${texFont}`;
+    ctx.fillText(line1, x + pad + 18, y + pad + fontSize - 4);
+
+    ctx.font = `600 ${fontSize2}px ${texFont}`;
+    ctx.fillText(line2, x + pad + 18, y + pad + fontSize + fontSize2 + 2);
 
     ctx.restore();
   }
