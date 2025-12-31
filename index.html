@@ -39,6 +39,16 @@
       --hudBg: rgba(0,0,0,.55);
       --hudFg: rgba(255,255,255,.92);
       --hudBorder: rgba(255,255,255,.18);
+
+      /* ✅ Modal vars (dark default) */
+      --overlayBg: rgba(0,0,0,.55);
+      --modalBg: rgba(17,24,39,.96);
+      --modalBorder: rgba(255,255,255,.10);
+      --modalBodyBg: rgba(0,0,0,.18);
+      --modalRowBg: rgba(255,255,255,.03);
+      --modalRowBorder: rgba(255,255,255,.08);
+      --inputBg: rgba(0,0,0,.25);
+      --shadow: 0 20px 60px rgba(0,0,0,.45);
     }
 
     *{ box-sizing:border-box; }
@@ -79,12 +89,10 @@
       position: sticky; top: 0; z-index: 5;
       padding: 10px 0;
 
-      /*  テーマ変数で制御（ライト時は完全ベタ白へ） */
       background: var(--controlsBg);
 
       border-bottom: 1px solid rgba(255,255,255,.06);
 
-      /*  浮き出し防止 */
       box-shadow:none;
       backdrop-filter:none;
     }
@@ -109,10 +117,7 @@
       padding:10px;
       border:1px solid var(--border);
       border-radius:14px;
-
-      /* テーマ変数で制御 */
       background: var(--boxBg);
-
       margin-bottom: 12px;
     }
 
@@ -124,11 +129,7 @@
       padding:10px;
       border:1px solid rgba(255,255,255,.08);
       border-radius:14px;
-
-      /* テーマ変数で制御 */
       background: var(--cardBg);
-
-      /* 浮き出し防止 */
       box-shadow:none;
     }
     .rowCard .label{
@@ -141,7 +142,7 @@
       padding:10px;
       border-radius:10px;
       border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25);
+      background: var(--inputBg);
       color:var(--fg);
       outline:none;
     }
@@ -155,8 +156,6 @@
       cursor:pointer;
       font-size:16px;
       color: var(--fg);
-
-      /* 浮き出し防止 */
       box-shadow:none;
     }
     .iconBtn:hover{ background: rgba(255,255,255,.10); }
@@ -181,15 +180,10 @@
       padding:12px;
       border:1px solid var(--border);
       border-radius:14px;
-
-      /* テーマ変数で制御 */
       background: var(--boxBg);
-
       font-size:12px;
       line-height:1.65;
       color: var(--muted);
-
-      /* 浮き出し防止 */
       box-shadow:none;
     }
     .globalBox b{ color:var(--fg); }
@@ -217,7 +211,7 @@
     /* Modal */
     .modalOverlay{
       position:fixed; inset:0;
-      background: rgba(0,0,0,.55);
+      background: var(--overlayBg);
       display:none;
       align-items:center;
       justify-content:center;
@@ -226,11 +220,11 @@
     }
     .modal{
       width:min(580px, 96vw);
-      background: rgba(17,24,39,.96);
-      border:1px solid rgba(255,255,255,.10);
+      background: var(--modalBg);
+      border:1px solid var(--modalBorder);
       border-radius:18px;
       padding:14px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      box-shadow: var(--shadow);
     }
     .modalHeader{
       display:flex; align-items:center; justify-content:space-between;
@@ -250,17 +244,17 @@
     .modalBody{
       display:flex; flex-direction:column; gap:10px;
       padding:10px;
-      border:1px solid rgba(255,255,255,.08);
+      border:1px solid var(--modalRowBorder);
       border-radius:14px;
-      background: rgba(0,0,0,.18);
+      background: var(--modalBodyBg);
       font-size:12px;
     }
     .modalRow{
       display:flex; align-items:center; justify-content:space-between; gap:10px;
       padding:8px 8px;
       border-radius:12px;
-      border:1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.03);
+      border:1px solid var(--modalRowBorder);
+      background: var(--modalRowBg);
     }
     .modalRow .left{ color: var(--fg); }
     .modalRow .right{ display:flex; gap:8px; align-items:center; }
@@ -275,7 +269,7 @@
       padding:8px;
       border-radius:10px;
       border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.25);
+      background: var(--inputBg);
       color: var(--fg);
       outline:none;
       font-size: 12px;
@@ -952,6 +946,16 @@
       root.setProperty('--btnBgHover', 'rgba(0,0,0,.06)');
       root.setProperty('--btnBorder', 'rgba(0,0,0,.30)');
 
+      /* ✅ Modal (light) */
+      root.setProperty('--overlayBg', 'rgba(0,0,0,.25)');
+      root.setProperty('--modalBg', '#ffffff');
+      root.setProperty('--modalBorder', 'rgba(0,0,0,.18)');
+      root.setProperty('--modalBodyBg', '#ffffff');
+      root.setProperty('--modalRowBg', '#ffffff');
+      root.setProperty('--modalRowBorder', 'rgba(0,0,0,.12)');
+      root.setProperty('--inputBg', '#ffffff');
+      root.setProperty('--shadow', '0 20px 60px rgba(0,0,0,.18)');
+
       // Canvas background should be white
       root.setProperty('--canvasBg', '#ffffff');
 
@@ -980,6 +984,16 @@
       root.setProperty('--controlsBg', 'linear-gradient(to bottom, var(--panelSolid), rgba(17,24,39,.60))');
       root.setProperty('--boxBg', 'rgba(0,0,0,.18)');
       root.setProperty('--cardBg', 'rgba(255,255,255,.04)');
+
+      /* ✅ Modal (dark) */
+      root.setProperty('--overlayBg', 'rgba(0,0,0,.55)');
+      root.setProperty('--modalBg', 'rgba(17,24,39,.96)');
+      root.setProperty('--modalBorder', 'rgba(255,255,255,.10)');
+      root.setProperty('--modalBodyBg', 'rgba(0,0,0,.18)');
+      root.setProperty('--modalRowBg', 'rgba(255,255,255,.03)');
+      root.setProperty('--modalRowBorder', 'rgba(255,255,255,.08)');
+      root.setProperty('--inputBg', 'rgba(0,0,0,.25)');
+      root.setProperty('--shadow', '0 20px 60px rgba(0,0,0,.45)');
 
       root.setProperty('--canvasBg', 'rgba(0,0,0,0)');
 
@@ -1122,6 +1136,7 @@
     ctx.closePath();
   }
 
+  // ✅ HUD：N/M のみ表示
   function drawHUD(){
     if (selectedRowId == null) return;
     const r = rows.find(x => x.id === selectedRowId);
@@ -1137,13 +1152,11 @@
     const x = 12, y = 12;
 
     const fontSize  = Math.min(110, Math.max(34, cv.width * 0.060));
-    const fontSize2 = Math.min(86,  Math.max(26, fontSize * 0.72));
     const pad = Math.round(fontSize * 0.35);
 
     const texFont = `"KaTeX_Main","KaTeX_Math","Times New Roman",serif`;
 
     const line1 = `N=${r.N},  M=${r.M}`;
-    const line2 = `start=${info.startN}, step=${info.step}, L=${info.L}`;
 
     ctx.save();
     ctx.setTransform(1,0,0,1,0,0); // screen coords
@@ -1151,12 +1164,8 @@
     ctx.font = `700 ${fontSize}px ${texFont}`;
     const w1 = ctx.measureText(line1).width;
 
-    ctx.font = `600 ${fontSize2}px ${texFont}`;
-    const w2 = ctx.measureText(line2).width;
-
-    const w = Math.max(w1, w2);
-    const boxW = w + pad*2 + 10;
-    const boxH = pad*2 + fontSize + fontSize2 + Math.round(fontSize*0.35);
+    const boxW = w1 + pad*2 + 10;
+    const boxH = pad*2 + fontSize + Math.round(fontSize*0.25);
 
     roundRect(ctx, x, y, boxW, boxH, 14);
     ctx.fillStyle = bg;
@@ -1174,12 +1183,8 @@
 
     // Text
     ctx.fillStyle = fg;
-
     ctx.font = `700 ${fontSize}px ${texFont}`;
     ctx.fillText(line1, x + pad + 18, y + pad + fontSize - 4);
-
-    ctx.font = `600 ${fontSize2}px ${texFont}`;
-    ctx.fillText(line2, x + pad + 18, y + pad + fontSize + fontSize2 + 2);
 
     ctx.restore();
   }
@@ -1190,7 +1195,9 @@
 
     const cx = cv.width/2;
     const cy = cv.height/2;
-    const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5;
+
+    // ✅ 初期サイズを0.9倍
+    const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5 * 0.9;
 
     ctx.save();
     ctx.translate(cx + view.panX, cy + view.panY);
@@ -1209,13 +1216,7 @@
 
   function updateGlobalInfo(){
     const total = rows.length;
-    const visible = rows.filter(r => r.visible).length;
     const playing = rows.filter(r => r.animPlaying).length;
-
-    const validRows = rows.filter(r => getCycleInfo(r).valid);
-    const tmax = validRows.length
-      ? Math.max(...validRows.map(r => Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME)))
-      : DEFAULT_ANIM_TIME;
 
     globalInfoEl.innerHTML = `
       <b>表示数</b>: ${total}<br/>
@@ -1314,7 +1315,8 @@
   }
 
   function rowHitTest(worldX, worldY){
-    const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5;
+    // ✅ drawAll と同じ 0.9 倍を適用（当たり判定も一致させる）
+    const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5 * 0.9;
     const best = { id: null, d: Infinity };
 
     for (const r of rows){
@@ -1496,6 +1498,3 @@
 </script>
 </body>
 </html>
-
-
-
