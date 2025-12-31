@@ -657,74 +657,101 @@
     ctx.restore();
   }
 
-  function drawRow(r, cx, cy, radius){
-    if (!r.visible) return;
+ function drawRow(r, cx, cy, radius){
+  if (!r.visible) return;
 
-    const N = r.N, M = r.M;
-    if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1) return;
+  const N = r.N, M = r.M;
+  if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1) return;
 
-    const pts = pointsOnCircle(N, cx, cy, radius);
+  const pts = pointsOnCircle(N, cx, cy, radius);
 
-    // 頂点
-    if (r.showPoints && N >= 1){
-      ctx.save();
-      const dot = Math.max(2, cv.width * 0.004);
-      for(let i=0;i<N;i++){
-        ctx.beginPath();
-        ctx.arc(pts[i].x, pts[i].y, dot, 0, TAU);
-        ctx.fillStyle = r.pointColor;
-        ctx.globalAlpha = 0.80;
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-
-        if (r.showLabels){
-          ctx.fillStyle = 'rgba(255,255,255,.85)';
-          ctx.font = `${Math.max(10, cv.width*0.018)}px system-ui, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          const vx = pts[i].x - cx, vy = pts[i].y - cy;
-          const len = Math.hypot(vx,vy) || 1;
-          const tx = pts[i].x + (vx/len)*Math.max(12, cv.width*0.02);
-          const ty = pts[i].y + (vy/len)*Math.max(12, cv.width*0.02);
-          ctx.fillText(String(i), tx, ty);
-        }
-      }
-      ctx.restore();
-    }
-
-    if (N < 3) return;
-
-    const step = normalizeStep(N, M);
-    if (step === 0) return;
-
-    const cycle = buildCycle(N, step); // [0,...,0]
-    const totalEdges = cycle.length - 1;
-    if (totalEdges <= 0) return;
-
-    // 進捗：停止中は「完全表示」に戻す仕様にする（比較用途で見やすい）
-    // 個別停止で途中で止めたい場合は、下の else を r.animEdgeCount にする
-    let edgesToDraw = totalEdges;
-    if (r.animPlaying){
-      edgesToDraw = Math.min(totalEdges, Math.floor(r.animEdgeCount));
-    }
-
-    if (edgesToDraw > 0){
-      ctx.save();
+  // 頂点
+  if (r.showPoints && N >= 1){
+    ctx.save();
+    const dot = Math.max(2, cv.width * 0.004);
+    for(let i=0;i<N;i++){
       ctx.beginPath();
-      ctx.moveTo(pts[cycle[0]].x, pts[cycle[0]].y);
-      for(let i=1;i<=edgesToDraw;i++){
-        ctx.lineTo(pts[cycle[i]].x, pts[cycle[i]].y);
-      }
-      ctx.strokeStyle = r.lineColor;
-      ctx.globalAlpha = 0.95;
-      ctx.lineWidth = Math.max(1.5, cv.width * 0.0045);
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.stroke();
+      ctx.arc(pts[i].x, pts[i].y, dot, 0, TAU);
+      ctx.fillStyle = r.pointColor;
+      ctx.globalAlpha = 0.80;
+      ctx.fill();
       ctx.globalAlpha = 1.0;
-      ctx.restore();
+
+      if (r.showLabels){
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
+        ctx.font = `${Math.max(10, cv.width*0.018)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const vx = pts[i].x - cx, vy = pts[i].y - cy;
+        const len = Math.hypot(vx,vy) || 1;
+        const tx = pts[i].x + (vx/len)*Math.max(12, cv.width*0.02);
+        const ty = pts[i].y + (vy/len)*Math.max(12, cv.width*0.02);
+        ctx.fillText(String(i), tx, ty);
+      }
     }
+    ctx.restore();
   }
+
+  if (N < 3) return;
+
+  const step = normalizeStep(N, M);
+  if (step === 0) return;
+
+  const cycle = buildCycle(N, step); // [0,...,0]
+  const totalEdges = cycle.length - 1;
+  if (totalEdges <= 0) return;
+
+  // ====== ここが「伸びる描画」の肝 ======
+  // 進捗 p は [0, totalEdges] の連続値
+  // 再生中: p=r.animEdgeCount
+  // 停止中: 途中で止めているならそのまま（ポーズ状態）、何もしてなければ完成表示
+  let p;
+  if (r.animPlaying){
+    p = Math.max(0, Math.min(totalEdges, r.animEdgeCount));
+  } else {
+    // 停止時に「途中で止めた状態」を保持したいので、進捗があればそれを使う
+    // 進捗が無い（0）なら完成表示
+    p = (r.animEdgeCount > 0 && r.animEdgeCount < totalEdges) ? r.animEdgeCount : totalEdges;
+  }
+
+  const whole = Math.floor(p);              // 完成した辺数
+  const frac  = p - whole;                 // 次の辺の途中(0..1)
+
+  if (whole <= 0 && frac <= 0) return;
+
+  ctx.save();
+  ctx.beginPath();
+
+  // 始点
+  ctx.moveTo(pts[cycle[0]].x, pts[cycle[0]].y);
+
+  // 完成した辺を描く（i=1..whole）
+  for(let i=1; i<=whole; i++){
+    const idx = cycle[i];
+    ctx.lineTo(pts[idx].x, pts[idx].y);
+  }
+
+  // 次の辺を「途中まで」描く（whole < totalEdges のとき）
+  if (whole < totalEdges && frac > 0){
+    const aIdx = cycle[whole];
+    const bIdx = cycle[whole + 1];
+    const ax = pts[aIdx].x, ay = pts[aIdx].y;
+    const bx = pts[bIdx].x, by = pts[bIdx].y;
+    const mx = ax + (bx - ax) * frac;
+    const my = ay + (by - ay) * frac;
+    ctx.lineTo(mx, my);
+  }
+
+  ctx.strokeStyle = r.lineColor;
+  ctx.globalAlpha = 0.95;
+  ctx.lineWidth = Math.max(1.5, cv.width * 0.0045);
+  ctx.lineJoin = 'round';
+  ctx.lineCap  = 'round';
+  ctx.stroke();
+  ctx.globalAlpha = 1.0;
+  ctx.restore();
+}
+
 
   function anyAnimationPlaying(){
     return rows.some(r => r.animPlaying);
@@ -888,3 +915,4 @@
 </script>
 </body>
 </html>
+
