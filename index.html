@@ -1,233 +1,1418 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>正 N/M 角形 可視化ツール（完全版）</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>正 N/M 角形（複数・同時アニメ・ズーム/パン・全体設定・選択表示）</title>
+  <style>
+    :root{
+      /* Theme (default: dark) */
+      --bg:#0b0f17;
+      --fg:#e5e7eb;
+      --muted:#9ca3af;
+      --panel: rgba(17,24,39,.86);
+      --panelSolid:#111827;
+      --border: rgba(255,255,255,.10);
+      --border2: rgba(255,255,255,.14);
 
-<style>
-:root{
-  --bg:#0b0f17;
-  --fg:#e5e7eb;
-  --panel:#111827;
-  --circle:#888;
-}
-*{box-sizing:border-box;}
-html,body{height:100%;margin:0;}
-body{
-  background:var(--bg);
-  color:var(--fg);
-  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif;
-  overflow:hidden;
-}
-.wrap{
-  display:grid;
-  grid-template-columns:420px 1fr;
-  height:100vh;
-}
-.panel{
-  background:var(--panel);
-  padding:14px;
-  overflow-y:auto;
-}
-.controls{
-  position:sticky;
-  top:0;
-  background:linear-gradient(var(--panel),rgba(17,24,39,.85));
-  padding-bottom:10px;
-  z-index:10;
-}
-button{
-  margin:4px;
-  padding:8px 12px;
-  border-radius:10px;
-  border:1px solid #666;
-  background:#222;
-  color:inherit;
-  cursor:pointer;
-}
-.rows{margin-top:10px;}
-.row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
-input[type=number]{width:70px;}
+      /* Canvas */
+      --circle: rgba(255,255,255,.18);
 
-.canvasWrap{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-.square{
-  width:min(900px,100%);
-  aspect-ratio:1/1;
-  position:relative;
-}
-canvas{width:100%;height:100%;display:block;}
+      /* Buttons */
+      --btnBg: rgba(255,255,255,.06);
+      --btnBgHover: rgba(255,255,255,.10);
+      --btnBorder: rgba(255,255,255,.14);
 
-.infoBox{
-  position:absolute;
-  top:10px;
-  left:10px;
-  background:rgba(0,0,0,.55);
-  color:white;
-  padding:6px 10px;
-  border-radius:8px;
-  font-size:13px;
-  pointer-events:none;
-  display:none;
-}
-</style>
+      /* HUD box */
+      --hudBg: rgba(0,0,0,.55);
+      --hudFg: rgba(255,255,255,.92);
+      --hudBorder: rgba(255,255,255,.18);
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+      background: radial-gradient(1200px 700px at 30% 20%, rgba(17,24,39,1), rgba(5,7,11,1));
+      background-color: var(--bg);
+      color:var(--fg);
+      overflow:hidden;
+    }
+
+    .wrap{
+      display:grid;
+      grid-template-columns: 440px 1fr;
+      height:100vh;
+      width:100vw;
+    }
+
+    /* Left panel scroll only */
+    .panel{
+      height:100vh;
+      overflow-y:auto;
+      padding:16px;
+      background: var(--panel);
+      border-right: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(8px);
+    }
+
+    h1{ font-size:18px; margin:0 0 10px; }
+    .desc{
+      font-size:12px; color:var(--muted); line-height:1.55; margin-bottom:12px;
+    }
+
+    .controlsTop{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 14px;
+      position: sticky; top: 0; z-index: 5;
+      padding: 10px 0;
+      background: linear-gradient(to bottom, var(--panelSolid), rgba(17,24,39,.60));
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+
+    button{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--btnBorder);
+      background: var(--btnBg);
+      color:var(--fg);
+      cursor:pointer;
+      user-select:none;
+    }
+    button:hover{ background: var(--btnBgHover); }
+
+    .btnPrimary{ border-color: rgba(96,165,250,.45); }
+    .btnToggle { border-color: rgba(52,211,153,.35); }
+    .btnWarn   { border-color: rgba(251,191,36,.35); }
+
+    .rows{
+      display:flex; flex-direction:column; gap:10px;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+      margin-bottom: 12px;
+    }
+
+    .rowCard{
+      display:grid;
+      grid-template-columns: 1fr 1fr auto auto auto;
+      gap:8px;
+      align-items:center;
+      padding:10px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      background: rgba(255,255,255,.04);
+    }
+    .rowCard .label{
+      font-size:11px; color:var(--muted); margin-bottom:4px;
+    }
+    .rowCard .field{ display:flex; flex-direction:column; }
+    input[type="number"]{
+      width:100%;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      color:var(--fg);
+      outline:none;
+    }
+
+    .iconBtn{
+      width:40px; height:40px;
+      display:inline-flex; align-items:center; justify-content:center;
+      border-radius:12px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.06);
+      cursor:pointer;
+      font-size:16px;
+    }
+    .iconBtn:hover{ background: rgba(255,255,255,.10); }
+
+    .swatch{
+      width:14px; height:14px; border-radius:6px;
+      border:1px solid rgba(255,255,255,.25);
+      display:inline-block;
+      vertical-align:middle;
+      margin-left:6px;
+    }
+    .rowMeta{
+      grid-column: 1 / -1;
+      font-size:11px;
+      color: var(--muted);
+      margin-top:4px;
+      line-height:1.55;
+    }
+
+    .globalBox{
+      margin-top:12px;
+      padding:12px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+      font-size:12px;
+      line-height:1.65;
+      color: var(--muted);
+    }
+    .globalBox b{ color:var(--fg); }
+
+    /* Right side fixed center */
+    .canvasWrap{
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+    }
+    .square{
+      width: min(940px, calc(100vw - 490px));
+      aspect-ratio: 1 / 1;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.02);
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden;
+    }
+    canvas{ width:100%; height:100%; display:block; cursor: grab; }
+    canvas.dragging{ cursor: grabbing; }
+
+    /* Modal (row settings & global settings) */
+    .modalOverlay{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index: 1000;
+    }
+    .modal{
+      width:min(580px, 96vw);
+      background: rgba(17,24,39,.96);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:18px;
+      padding:14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    }
+    .modalHeader{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; margin-bottom:10px;
+    }
+    .modalTitle{ font-size:14px; font-weight:700; }
+    .closeBtn{
+      width:38px; height:38px; border-radius:12px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.06);
+      color:var(--fg); cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px;
+    }
+    .closeBtn:hover{ background: rgba(255,255,255,.10); }
+
+    .modalBody{
+      display:flex; flex-direction:column; gap:10px;
+      padding:10px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      background: rgba(0,0,0,.18);
+      font-size:12px;
+    }
+    .modalRow{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:8px 8px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+    }
+    .modalRow .left{ color: var(--fg); }
+    .modalRow .right{ display:flex; gap:8px; align-items:center; }
+
+    input[type="color"]{
+      width:44px; height:32px;
+      border:none; background: transparent; padding:0;
+      cursor:pointer;
+    }
+    .miniInput{
+      width: 130px;
+      padding:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      color: var(--fg);
+      outline:none;
+      font-size: 12px;
+    }
+
+    .tiny{
+      font-size:11px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+    .footerNote{
+      margin-top:10px;
+      font-size:11px;
+      color:var(--muted);
+      line-height:1.55;
+      padding-bottom: 16px;
+    }
+  </style>
 </head>
 
 <body>
 <div class="wrap">
   <div class="panel">
-    <div class="controls">
-      <button id="add">＋追加</button>
-      <button id="reset">リセット</button>
-      <button id="globalSetting">設定</button>
-      <button id="save">PNG保存</button>
+    <h1>正 N/M 角形（A完成版 + 拡張）</h1>
+    <div class="desc">
+      円周上の <b>N</b> 等分点を、ステップ <b>M</b> で辿ります。<br/>
+      作図は <b>始点（start）</b> を基準にし、<b>始点に戻った瞬間に終了</b>します。<br/>
+      キャンバス：<b>ホイール=ズーム</b>、<b>ドラッグ=移動</b>、<b>ダブルクリック=ビューリセット</b>。<br/>
+      図形をクリックすると、描画左上にその図形の <b>N/M</b> が表示されます（PNG保存にも写ります）。
     </div>
+
+    <div class="controlsTop">
+      <button id="addRow" class="btnPrimary">＋ 追加</button>
+      <button id="resetAll" class="btnWarn">リセット</button>
+      <button id="openGlobal" class="btnWarn">設定</button>
+      <button id="toggleAll" class="btnToggle">▶ 全アニメ再生</button>
+      <button id="saveAll">スクリーンショット保存（PNG）</button>
+    </div>
+
     <div class="rows" id="rows"></div>
+    <div class="globalBox" id="globalInfo"></div>
+
+    <div class="footerNote">
+      ✅ 左パネルのみスクロール（行をいくら増やしてもOK）<br/>
+      ✅ 右の描画は常に中央＆正方形（外接円が歪みません）<br/>
+      ※ M は内部で <b>M mod N</b> に正規化（0は不可）。始点は <b>start mod N</b> に正規化。<br/>
+      ※ 全アニメ再生は、各行の設定時間を使い、<b>同時に開始→同時に終了</b>するよう速度を自動調整します。<br/>
+      （各行の時間が異なる場合は、最大時間に合わせて全行を揃えます）
+    </div>
   </div>
 
   <div class="canvasWrap">
     <div class="square">
       <canvas id="cv"></canvas>
-      <div class="infoBox" id="infoBox"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 行設定モーダル -->
+<div class="modalOverlay" id="rowModalOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modalHeader">
+      <div class="modalTitle" id="rowModalTitle">設定</div>
+      <button class="closeBtn" id="rowModalClose" title="閉じる">✕</button>
+    </div>
+
+    <div class="modalBody">
+      <div class="modalRow">
+        <div class="left">この図形を表示</div>
+        <div class="right"><input type="checkbox" id="optVisible"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">頂点を表示</div>
+        <div class="right"><input type="checkbox" id="optShowPoints"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">頂点番号を表示</div>
+        <div class="right"><input type="checkbox" id="optShowLabels"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">線の色</div>
+        <div class="right"><input type="color" id="optLineColor"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">頂点の色</div>
+        <div class="right"><input type="color" id="optPointColor"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">線と頂点を同色にする</div>
+        <div class="right"><input type="checkbox" id="optLinkColors"></div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">アニメ時間（秒）</div>
+        <div class="right">
+          <input class="miniInput" type="number" id="optAnimTime" min="0.2" step="0.1" />
+        </div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">始点（start）</div>
+        <div class="right">
+          <input class="miniInput" type="number" id="optStart" step="1" />
+        </div>
+      </div>
+
+      <div class="tiny">
+        ・始点は内部で <b>start mod N</b> に正規化（Nより大きい/負でもOK）。<br/>
+        ・作図は「始点に戻った瞬間に終了」。<br/>
+        ・線は「途中まで伸びる」アニメで描画します。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 全体設定モーダル -->
+<div class="modalOverlay" id="globalModalOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modalHeader">
+      <div class="modalTitle">全体設定</div>
+      <button class="closeBtn" id="globalModalClose" title="閉じる">✕</button>
+    </div>
+
+    <div class="modalBody">
+      <div class="modalRow">
+        <div class="left">背景</div>
+        <div class="right">
+          <select id="optTheme" class="miniInput" style="width:160px">
+            <option value="dark">黒（ダーク）</option>
+            <option value="light">白（ライト）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modalRow">
+        <div class="left">外接円の色</div>
+        <div class="right">
+          <input type="color" id="optCircleColor">
+        </div>
+      </div>
+
+      <div class="tiny">
+        ・文字色は背景に応じて自動で見やすい色になります。<br/>
+        ・外接円の色はキャンバスに反映されます（PNG保存にも反映）。
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-/* ===== 基本設定 ===== */
-const cv = document.getElementById("cv");
-const ctx = cv.getContext("2d");
-const rowsEl = document.getElementById("rows");
-const infoBox = document.getElementById("infoBox");
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
 
-let rows=[];
-let selected=null;
+  const rowsEl = document.getElementById('rows');
+  const globalInfoEl = document.getElementById('globalInfo');
 
-/* ===== ビュー ===== */
-const view={scale:1,panX:0,panY:0};
-function resize(){
-  const dpr=window.devicePixelRatio||1;
-  const r=cv.getBoundingClientRect();
-  cv.width=r.width*dpr;
-  cv.height=r.height*dpr;
-  ctx.setTransform(1,0,0,1,0,0);
-}
-window.addEventListener("resize",()=>{resize();draw();});
+  const btnAdd = document.getElementById('addRow');
+  const btnReset = document.getElementById('resetAll');
+  const btnToggleAll = document.getElementById('toggleAll');
+  const btnSave = document.getElementById('saveAll');
+  const btnOpenGlobal = document.getElementById('openGlobal');
 
-/* ===== 図形 ===== */
-function addRow(N=7,M=2){
-  rows.push({N,M,color:`hsl(${Math.random()*360},70%,60%)`});
-  renderRows();
-  draw();
-}
-function renderRows(){
-  rowsEl.innerHTML="";
-  rows.forEach((r,i)=>{
-    const d=document.createElement("div");
-    d.className="row";
-    d.innerHTML=`N:<input type=number value=${r.N}>
-                 M:<input type=number value=${r.M}>`;
-    d.querySelectorAll("input")[0].oninput=e=>{r.N=+e.target.value;draw();}
-    d.querySelectorAll("input")[1].oninput=e=>{r.M=+e.target.value;draw();}
-    rowsEl.appendChild(d);
-  });
-}
+  // Row modal
+  const rowModalOverlay = document.getElementById('rowModalOverlay');
+  const rowModalTitle = document.getElementById('rowModalTitle');
+  const rowModalClose = document.getElementById('rowModalClose');
+  const optVisible = document.getElementById('optVisible');
+  const optShowPoints = document.getElementById('optShowPoints');
+  const optShowLabels = document.getElementById('optShowLabels');
+  const optLineColor = document.getElementById('optLineColor');
+  const optPointColor = document.getElementById('optPointColor');
+  const optLinkColors = document.getElementById('optLinkColors');
+  const optAnimTime = document.getElementById('optAnimTime');
+  const optStart = document.getElementById('optStart');
 
-/* ===== 描画 ===== */
-function draw(){
-  resize();
-  ctx.clearRect(0,0,cv.width,cv.height);
-  const cx=cv.width/2,cy=cv.height/2;
-  const R=Math.min(cv.width,cv.height)*0.4;
-  ctx.save();
-  ctx.translate(cx+view.panX,cy+view.panY);
-  ctx.scale(view.scale,view.scale);
+  // Global modal
+  const globalModalOverlay = document.getElementById('globalModalOverlay');
+  const globalModalClose = document.getElementById('globalModalClose');
+  const optTheme = document.getElementById('optTheme');
+  const optCircleColor = document.getElementById('optCircleColor');
 
-  // 外接円
-  ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--circle');
-  ctx.beginPath();
-  ctx.arc(0,0,R,0,Math.PI*2);
-  ctx.stroke();
+  const TAU = Math.PI * 2;
 
-  rows.forEach(r=>{
-    ctx.strokeStyle=r.color;
-    ctx.beginPath();
-    for(let k=0;k<=r.N;k++){
-      const i=(k*r.M)%r.N;
-      const a=-Math.PI/2+2*Math.PI*i/r.N;
-      const x=R*Math.cos(a),y=R*Math.sin(a);
-      if(k===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  // Defaults
+  const DEFAULT_ANIM_TIME = 8.0;
+  const DEFAULT_N = 7;
+  const DEFAULT_M = 2;
+  const DEFAULT_START = 0;
+
+  const palette = [
+    "#60a5fa", "#f472b6", "#34d399", "#f59e0b", "#a78bfa",
+    "#22d3ee", "#fb7185", "#84cc16", "#e879f9", "#f87171",
+  ];
+
+  // ===== View (zoom/pan) =====
+  const view = {
+    scale: 1.0,
+    panX: 0.0, // device-pixel coords
+    panY: 0.0,
+    minScale: 0.2,
+    maxScale: 20.0,
+  };
+
+  function resetView(){
+    view.scale = 1.0;
+    view.panX = 0.0;
+    view.panY = 0.0;
+  }
+
+  // ===== Math helpers =====
+  function gcd(a,b){
+    a = Math.abs(a); b = Math.abs(b);
+    while(b !== 0){ const t = a % b; a = b; b = t; }
+    return a;
+  }
+  function mod(n, m){
+    return ((n % m) + m) % m;
+  }
+  function normalizeStep(N, M){
+    return mod(M, N); // 0..N-1
+  }
+  function normalizeStart(N, start){
+    return mod(start, N);
+  }
+
+  function pointsOnCircle(N, cx, cy, r){
+    const pts = [];
+    for(let k=0;k<N;k++){
+      const ang = -Math.PI/2 + TAU*(k/N);
+      pts.push({ x: cx + r*Math.cos(ang), y: cy + r*Math.sin(ang) });
     }
-    ctx.stroke();
+    return pts;
+  }
+
+  // start に戻ったら終了（最後のstartを含む）
+  function buildCycle(N, step, start){
+    const s = normalizeStart(N, start);
+    const seq = [s];
+    if (N <= 0 || step === 0) return seq;
+    let cur = s;
+    const seen = new Set([cur]); // safety
+    while(true){
+      cur = (cur + step) % N;
+      seq.push(cur);
+      if(cur === s) break;
+      if (seen.has(cur)) break;
+      seen.add(cur);
+      if (seq.length > N + 2) break;
+    }
+    return seq;
+  }
+
+  // ===== Canvas sizing =====
+  function resizeCanvasToDisplaySize(){
+    const dpr = window.devicePixelRatio || 1;
+    const rect = cv.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    if (cv.width !== w || cv.height !== h){
+      cv.width = w;
+      cv.height = h;
+    }
+    ctx.setTransform(1,0,0,1,0,0);
+  }
+
+  // ===== Row state =====
+  let nextId = 1;
+  const rows = [];
+  let rafId = null;
+  let lastT = null;
+  let globalPlaying = false;
+
+  // Selected row id (by click on canvas)
+  let selectedRowId = null;
+
+  function newRowDefaults(){
+    const idx = rows.length;
+    const base = palette[idx % palette.length];
+    return {
+      id: nextId++,
+      N: DEFAULT_N,
+      M: DEFAULT_M,
+      start: DEFAULT_START,
+      animTimeSec: DEFAULT_ANIM_TIME,
+
+      visible: true,
+      showPoints: true,
+      showLabels: false,
+      lineColor: base,
+      pointColor: base,
+      linkColors: true,
+
+      animPlaying: false,
+      animProgressEdges: 0.0, // continuous
+      animSpeedEdgesPerSec: 0.0,
+    };
+  }
+
+  function rowTitle(r){
+    return `#${r.id}  N=${r.N}, M=${r.M}`;
+  }
+
+  function getCycleInfo(r){
+    const N = r.N, M = r.M;
+    if (!Number.isInteger(N) || !Number.isInteger(M) || N < 3 || M < 1) {
+      return { edges: 0, step: 0, L: 0, d: 0, startN: 0, cycle: [0] };
+    }
+    const step = normalizeStep(N, M);
+    const startN = normalizeStart(N, r.start);
+    if (step === 0) {
+      return { edges: 0, step, L: 0, d: gcd(N, step), startN, cycle: [startN] };
+    }
+    const cycle = buildCycle(N, step, startN);
+    const edges = Math.max(0, cycle.length - 1);
+    const d = gcd(N, step);
+    const L = edges;
+    return { edges, step, L, d, startN, cycle };
+  }
+
+  function prepareSpeedsForAll(){
+    // Make all animations finish together: use max(animTimeSec)
+    const times = rows.map(r => Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME));
+    const Tglobal = times.length ? Math.max(...times) : DEFAULT_ANIM_TIME;
+
+    for (const r of rows){
+      const info = getCycleInfo(r);
+      const edges = info.edges;
+      r.animProgressEdges = 0.0;
+      r.animSpeedEdgesPerSec = edges > 0 ? (edges / Tglobal) : 0.0;
+    }
+  }
+
+  // ===== UI rows =====
+  function createRowUI(r){
+    const card = document.createElement('div');
+    card.className = 'rowCard';
+    card.dataset.rowId = String(r.id);
+
+    const fieldN = document.createElement('div');
+    fieldN.className = 'field';
+    fieldN.innerHTML = `<div class="label">N</div>`;
+    const inN = document.createElement('input');
+    inN.type = 'number'; inN.min = '1'; inN.step = '1';
+    inN.value = String(r.N);
+    fieldN.appendChild(inN);
+
+    const fieldM = document.createElement('div');
+    fieldM.className = 'field';
+    fieldM.innerHTML = `<div class="label">M</div>`;
+    const inM = document.createElement('input');
+    inM.type = 'number'; inM.min = '1'; inM.step = '1';
+    inM.value = String(r.M);
+    fieldM.appendChild(inM);
+
+    const btnAnim = document.createElement('button');
+    btnAnim.className = 'iconBtn';
+    btnAnim.title = 'この行のアニメ 再生/停止';
+    btnAnim.textContent = '▶';
+
+    const btnGear = document.createElement('button');
+    btnGear.className = 'iconBtn';
+    btnGear.title = '設定';
+    btnGear.textContent = '⚙';
+
+    const btnDel = document.createElement('button');
+    btnDel.className = 'iconBtn';
+    btnDel.title = '削除';
+    btnDel.textContent = '🗑';
+
+    const meta = document.createElement('div');
+    meta.className = 'rowMeta';
+
+    function updateMeta(){
+      const N = r.N, M = r.M;
+      if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1){
+        meta.textContent = `入力エラー（N,Mは自然数）`;
+        return;
+      }
+      if (N < 3){
+        meta.textContent = `注意: N=${N} は多角形になりません（N≥3推奨）`;
+        return;
+      }
+      const info = getCycleInfo(r);
+      const sw = `<span class="swatch" style="background:${r.lineColor}"></span>`;
+      meta.innerHTML =
+        `start=${info.startN}, step=M mod N=${info.step}, gcd(N,step)=${info.d}, 閉路長L=${info.L}, time=${r.animTimeSec.toFixed(1)}s ${sw}`;
+    }
+
+    function stopGlobalIfNeeded(){
+      if (globalPlaying){
+        globalPlaying = false;
+        btnToggleAll.textContent = "▶ 全アニメ再生";
+      }
+    }
+
+    function resetAnim(){
+      r.animPlaying = false;
+      r.animProgressEdges = 0.0;
+      card._setAnimIcon();
+    }
+
+    function applyN(){
+      const v = Math.floor(Number(inN.value));
+      r.N = Number.isFinite(v) ? v : r.N;
+      if (r.N < 1) r.N = 1;
+      inN.value = String(r.N);
+
+      resetAnim();
+      stopGlobalIfNeeded();
+      card._updateMeta();
+      scheduleDraw();
+    }
+    function applyM(){
+      const v = Math.floor(Number(inM.value));
+      r.M = Number.isFinite(v) ? v : r.M;
+      if (r.M < 1) r.M = 1;
+      inM.value = String(r.M);
+
+      resetAnim();
+      stopGlobalIfNeeded();
+      card._updateMeta();
+      scheduleDraw();
+    }
+
+    inN.addEventListener('input', applyN);
+    inM.addEventListener('input', applyM);
+    inN.addEventListener('change', applyN);
+    inM.addEventListener('change', applyM);
+
+    btnAnim.addEventListener('click', () => {
+      // Individual play: use its own animTimeSec
+      const info = getCycleInfo(r);
+      const edges = info.edges;
+      const T = Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME);
+      r.animSpeedEdgesPerSec = edges > 0 ? (edges / T) : 0.0;
+
+      r.animPlaying = !r.animPlaying;
+      if (r.animPlaying) r.animProgressEdges = 0.0;
+      card._setAnimIcon();
+
+      stopGlobalIfNeeded();
+      scheduleDraw();
+    });
+
+    btnGear.addEventListener('click', () => openRowSettings(r, card));
+    btnDel.addEventListener('click', () => {
+      const i = rows.findIndex(x => x.id === r.id);
+      if (i >= 0) rows.splice(i,1);
+      card.remove();
+
+      if (selectedRowId === r.id) selectedRowId = null;
+      if (globalPlaying){
+        globalPlaying = false;
+        btnToggleAll.textContent = "▶ 全アニメ再生";
+      }
+      scheduleDraw();
+    });
+
+    card._updateMeta = updateMeta;
+    card._setAnimIcon = () => { btnAnim.textContent = r.animPlaying ? '⏸' : '▶'; };
+
+    card.appendChild(fieldN);
+    card.appendChild(fieldM);
+    card.appendChild(btnAnim);
+    card.appendChild(btnGear);
+    card.appendChild(btnDel);
+    card.appendChild(meta);
+
+    updateMeta();
+    card._setAnimIcon();
+    return card;
+  }
+
+  function addRow(initial){
+    const r = Object.assign(newRowDefaults(), initial || {});
+    const idx = rows.length;
+    const base = palette[idx % palette.length];
+    if (!initial || !initial.lineColor) r.lineColor = base;
+    if (!initial || !initial.pointColor) r.pointColor = base;
+    if (r.linkColors) r.pointColor = r.lineColor;
+
+    const t = Number(r.animTimeSec);
+    r.animTimeSec = (Number.isFinite(t) && t >= 0.2) ? t : DEFAULT_ANIM_TIME;
+
+    rows.push(r);
+    rowsEl.appendChild(createRowUI(r));
+
+    // Changing rows stops global play for safety
+    if (globalPlaying){
+      globalPlaying = false;
+      btnToggleAll.textContent = "▶ 全アニメ再生";
+    }
+
+    scheduleDraw();
+  }
+
+  // ===== Row settings modal =====
+  let modalRow = null;
+  let modalRowCard = null;
+
+  function openRowSettings(r, card){
+    modalRow = r;
+    modalRowCard = card;
+    rowModalTitle.textContent = `設定 ${rowTitle(r)}`;
+
+    optVisible.checked = r.visible;
+    optShowPoints.checked = r.showPoints;
+    optShowLabels.checked = r.showLabels;
+    optLineColor.value = r.lineColor;
+    optPointColor.value = r.pointColor;
+    optLinkColors.checked = r.linkColors;
+    optAnimTime.value = String(Number(r.animTimeSec).toFixed(1));
+    optStart.value = String(Number.isFinite(r.start) ? r.start : 0);
+
+    optPointColor.disabled = r.linkColors;
+
+    rowModalOverlay.style.display = 'flex';
+  }
+  function closeRowSettings(){
+    rowModalOverlay.style.display = 'none';
+    modalRow = null;
+    modalRowCard = null;
+  }
+
+  function syncRowModalToRow(){
+    if (!modalRow) return;
+    const r = modalRow;
+
+    r.visible = optVisible.checked;
+    r.showPoints = optShowPoints.checked;
+    r.showLabels = optShowLabels.checked;
+
+    r.linkColors = optLinkColors.checked;
+    r.lineColor = optLineColor.value;
+
+    if (r.linkColors){
+      r.pointColor = r.lineColor;
+      optPointColor.value = r.pointColor;
+      optPointColor.disabled = true;
+    } else {
+      optPointColor.disabled = false;
+      r.pointColor = optPointColor.value;
+    }
+
+    // anim time
+    {
+      const v = Number(optAnimTime.value);
+      r.animTimeSec = (Number.isFinite(v) && v >= 0.2) ? v : DEFAULT_ANIM_TIME;
+      optAnimTime.value = String(r.animTimeSec.toFixed(1));
+    }
+    // start
+    {
+      const v = Math.floor(Number(optStart.value));
+      r.start = Number.isFinite(v) ? v : 0;
+      optStart.value = String(r.start);
+    }
+
+    // Reset animation on setting change
+    r.animPlaying = false;
+    r.animProgressEdges = 0.0;
+
+    // Stop global play (needs recompute)
+    if (globalPlaying){
+      globalPlaying = false;
+      btnToggleAll.textContent = "▶ 全アニメ再生";
+    }
+
+    if (modalRowCard && modalRowCard._updateMeta) modalRowCard._updateMeta();
+    if (modalRowCard && modalRowCard._setAnimIcon) modalRowCard._setAnimIcon();
+
+    scheduleDraw();
+  }
+
+  rowModalClose.addEventListener('click', closeRowSettings);
+  rowModalOverlay.addEventListener('click', (e) => {
+    if (e.target === rowModalOverlay) closeRowSettings();
   });
-  ctx.restore();
+  [optVisible,optShowPoints,optShowLabels,optLineColor,optPointColor,optLinkColors,optAnimTime,optStart].forEach(el => {
+    el.addEventListener('input', syncRowModalToRow);
+    el.addEventListener('change', syncRowModalToRow);
+  });
 
-  if(selected){
-    infoBox.style.display="block";
-    infoBox.textContent=`N=${selected.N}, M=${selected.M}`;
-    infoBox.style.border=`2px solid ${selected.color}`;
-  }else{
-    infoBox.style.display="none";
+  // ===== Global settings modal =====
+  function openGlobalSettings(){
+    // init UI from CSS vars
+    const circle = getComputedStyle(document.documentElement).getPropertyValue('--circle').trim();
+    // color input requires hex, so store separately and manage
+    optCircleColor.value = themeState.circleHex;
+    optTheme.value = themeState.theme;
+    globalModalOverlay.style.display = 'flex';
   }
-}
-
-/* ===== クリック選択 ===== */
-cv.addEventListener("click",()=>{
-  selected=rows.length?rows[rows.length-1]:null;
-  draw();
-});
-
-/* ===== マウス操作 ===== */
-let drag=false,lx,ly;
-cv.onmousedown=e=>{drag=true;lx=e.clientX;ly=e.clientY;}
-window.onmouseup=()=>drag=false;
-window.onmousemove=e=>{
-  if(!drag)return;
-  view.panX+=(e.clientX-lx)*(window.devicePixelRatio||1);
-  view.panY+=(e.clientY-ly)*(window.devicePixelRatio||1);
-  lx=e.clientX;ly=e.clientY;
-  draw();
-}
-cv.onwheel=e=>{
-  e.preventDefault();
-  view.scale*=Math.exp(-e.deltaY*0.001);
-  draw();
-}
-cv.ondblclick=()=>{view.scale=1;view.panX=view.panY=0;draw();}
-
-/* ===== 操作 ===== */
-document.getElementById("add").onclick=()=>addRow();
-document.getElementById("reset").onclick=()=>{
-  rows=[];
-  selected=null;
-  view.scale=1;view.panX=view.panY=0;
-  addRow();
-};
-document.getElementById("save").onclick=()=>{
-  const a=document.createElement("a");
-  a.href=cv.toDataURL();
-  a.download="NM.png";
-  a.click();
-};
-document.getElementById("globalSetting").onclick=()=>{
-  const bg=prompt("背景色 (black / white)","black");
-  if(bg==="white"){
-    document.documentElement.style.setProperty("--bg","#fff");
-    document.documentElement.style.setProperty("--fg","#000");
-    document.documentElement.style.setProperty("--panel","#eee");
-  }else{
-    document.documentElement.style.setProperty("--bg","#0b0f17");
-    document.documentElement.style.setProperty("--fg","#e5e7eb");
-    document.documentElement.style.setProperty("--panel","#111827");
+  function closeGlobalSettings(){
+    globalModalOverlay.style.display = 'none';
   }
-};
 
-/* 初期 */
-addRow();
+  globalModalClose.addEventListener('click', closeGlobalSettings);
+  globalModalOverlay.addEventListener('click', (e) => {
+    if (e.target === globalModalOverlay) closeGlobalSettings();
+  });
+
+  // Theme state
+  const themeState = {
+    theme: 'dark',          // 'dark' | 'light'
+    circleHex: '#b0b0b0',   // default circle
+  };
+
+  function applyTheme(){
+    const root = document.documentElement.style;
+
+    if (themeState.theme === 'light'){
+      root.setProperty('--bg', '#ffffff');
+      root.setProperty('--fg', '#111827');
+      root.setProperty('--muted', '#4b5563');
+      root.setProperty('--panel', 'rgba(243,244,246,.94)');
+      root.setProperty('--panelSolid', '#f3f4f6');
+      root.setProperty('--border', 'rgba(0,0,0,.10)');
+      root.setProperty('--border2', 'rgba(0,0,0,.14)');
+      root.setProperty('--btnBg', 'rgba(0,0,0,.04)');
+      root.setProperty('--btnBgHover', 'rgba(0,0,0,.08)');
+      root.setProperty('--btnBorder', 'rgba(0,0,0,.14)');
+
+      // HUD readable on light
+      root.setProperty('--hudBg', 'rgba(255,255,255,.75)');
+      root.setProperty('--hudFg', 'rgba(17,24,39,.95)');
+      root.setProperty('--hudBorder', 'rgba(0,0,0,.18)');
+    } else {
+      // dark
+      root.setProperty('--bg', '#0b0f17');
+      root.setProperty('--fg', '#e5e7eb');
+      root.setProperty('--muted', '#9ca3af');
+      root.setProperty('--panel', 'rgba(17,24,39,.86)');
+      root.setProperty('--panelSolid', '#111827');
+      root.setProperty('--border', 'rgba(255,255,255,.10)');
+      root.setProperty('--border2', 'rgba(255,255,255,.14)');
+      root.setProperty('--btnBg', 'rgba(255,255,255,.06)');
+      root.setProperty('--btnBgHover', 'rgba(255,255,255,.10)');
+      root.setProperty('--btnBorder', 'rgba(255,255,255,.14)');
+
+      root.setProperty('--hudBg', 'rgba(0,0,0,.55)');
+      root.setProperty('--hudFg', 'rgba(255,255,255,.92)');
+      root.setProperty('--hudBorder', 'rgba(255,255,255,.18)');
+    }
+
+    // circle
+    root.setProperty('--circle', hexToRgba(themeState.circleHex, 0.75));
+
+    scheduleDraw();
+  }
+
+  function hexToRgba(hex, a){
+    const h = hex.replace('#','').trim();
+    const v = h.length === 3
+      ? h.split('').map(ch => ch+ch).join('')
+      : h.padStart(6,'0').slice(0,6);
+    const r = parseInt(v.slice(0,2),16);
+    const g = parseInt(v.slice(2,4),16);
+    const b = parseInt(v.slice(4,6),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  optTheme.addEventListener('change', () => {
+    themeState.theme = optTheme.value;
+    applyTheme();
+  });
+  optCircleColor.addEventListener('input', () => {
+    themeState.circleHex = optCircleColor.value;
+    applyTheme();
+  });
+
+  // ===== Drawing =====
+  function clearCanvas(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+  }
+
+  function drawCircle(cx, cy, r){
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, TAU);
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--circle').trim();
+    ctx.lineWidth = Math.max(1, cv.width * 0.002);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawRow(r, cx, cy, radius){
+    if (!r.visible) return;
+
+    const N = r.N, M = r.M;
+    if (!Number.isInteger(N) || !Number.isInteger(M) || N < 1 || M < 1) return;
+
+    const pts = pointsOnCircle(N, cx, cy, radius);
+
+    // vertices
+    if (r.showPoints && N >= 1){
+      ctx.save();
+      const dot = Math.max(2, cv.width * 0.004) / view.scale; // keep dot stable on zoom
+      for(let i=0;i<N;i++){
+        ctx.beginPath();
+        ctx.arc(pts[i].x, pts[i].y, dot, 0, TAU);
+        ctx.fillStyle = r.pointColor;
+        ctx.globalAlpha = 0.80;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        if (r.showLabels){
+          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim();
+          ctx.globalAlpha = 0.85;
+          ctx.font = `${Math.max(10, cv.width*0.018)/view.scale}px system-ui, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const vx = pts[i].x - cx, vy = pts[i].y - cy;
+          const len = Math.hypot(vx,vy) || 1;
+          const off = Math.max(12, cv.width*0.02)/view.scale;
+          const tx = pts[i].x + (vx/len)*off;
+          const ty = pts[i].y + (vy/len)*off;
+          ctx.fillText(String(i), tx, ty);
+          ctx.globalAlpha = 1.0;
+        }
+      }
+      ctx.restore();
+    }
+
+    if (N < 3) return;
+
+    const step = normalizeStep(N, M);
+    if (step === 0) return;
+
+    const startN = normalizeStart(N, r.start);
+    const cycle = buildCycle(N, step, startN);
+    const totalEdges = cycle.length - 1;
+    if (totalEdges <= 0) return;
+
+    // "growing line" animation
+    const p = r.animPlaying
+      ? Math.max(0, Math.min(totalEdges, r.animProgressEdges))
+      : totalEdges;
+
+    const whole = Math.floor(p);
+    const frac  = p - whole;
+    if (whole <= 0 && frac <= 0) return;
+
+    ctx.save();
+    ctx.beginPath();
+
+    ctx.moveTo(pts[cycle[0]].x, pts[cycle[0]].y);
+
+    for(let i=1; i<=whole; i++){
+      ctx.lineTo(pts[cycle[i]].x, pts[cycle[i]].y);
+    }
+
+    if (whole < totalEdges && frac > 0){
+      const aIdx = cycle[whole];
+      const bIdx = cycle[whole + 1];
+      const ax = pts[aIdx].x, ay = pts[aIdx].y;
+      const bx = pts[bIdx].x, by = pts[bIdx].y;
+      const mx = ax + (bx - ax) * frac;
+      const my = ay + (by - ay) * frac;
+      ctx.lineTo(mx, my);
+    }
+
+    ctx.strokeStyle = r.lineColor;
+    ctx.globalAlpha = 0.95;
+    ctx.lineWidth = Math.max(1.5, cv.width * 0.0045) / view.scale; // stable width on zoom
+    ctx.lineJoin = 'round';
+    ctx.lineCap  = 'round';
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+
+    // Highlight if selected
+    if (selectedRowId === r.id){
+      ctx.globalAlpha = 0.18;
+      ctx.lineWidth = (Math.max(8, cv.width * 0.012) / view.scale);
+      ctx.strokeStyle = r.lineColor;
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+    }
+
+    ctx.restore();
+  }
+
+  function drawHUD(){
+    if (selectedRowId == null) return;
+    const r = rows.find(x => x.id === selectedRowId);
+    if (!r) return;
+
+    const info = getCycleInfo(r);
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--hudBg').trim();
+    const fg = getComputedStyle(document.documentElement).getPropertyValue('--hudFg').trim();
+    const bd = getComputedStyle(document.documentElement).getPropertyValue('--hudBorder').trim();
+
+    const pad = 10;
+    const x = 12, y = 12;
+    const fontSize = Math.max(12, cv.width * 0.018);
+    ctx.save();
+    ctx.setTransform(1,0,0,1,0,0); // screen coords
+    ctx.font = `700 ${fontSize}px system-ui, sans-serif`;
+    const line1 = `N=${r.N}, M=${r.M}`;
+    const line2 = `start=${info.startN}, step=${info.step}, L=${info.L}`;
+    const w = Math.max(
+      ctx.measureText(line1).width,
+      (ctx.font = `500 ${Math.max(11, fontSize*0.85)}px system-ui, sans-serif`, ctx.measureText(line2).width)
+    );
+
+    const boxW = w + pad*2;
+    const boxH = pad*2 + fontSize + Math.max(11, fontSize*0.85) + 10;
+
+    // Box
+    roundRect(ctx, x, y, boxW, boxH, 10);
+    ctx.fillStyle = bg;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = bd;
+    ctx.stroke();
+
+    // Color accent bar
+    ctx.fillStyle = r.lineColor;
+    ctx.globalAlpha = 0.85;
+    roundRect(ctx, x+6, y+6, 10, boxH-12, 6);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+
+    // Text
+    ctx.fillStyle = fg;
+    ctx.font = `700 ${fontSize}px system-ui, sans-serif`;
+    ctx.fillText(line1, x + pad + 10, y + pad + fontSize - 2);
+
+    ctx.font = `500 ${Math.max(11, fontSize*0.85)}px system-ui, sans-serif`;
+    ctx.fillText(line2, x + pad + 10, y + pad + fontSize + Math.max(11, fontSize*0.85) + 4);
+
+    ctx.restore();
+  }
+
+  function roundRect(ctx, x, y, w, h, r){
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr, y);
+    ctx.arcTo(x+w, y, x+w, y+h, rr);
+    ctx.arcTo(x+w, y+h, x, y+h, rr);
+    ctx.arcTo(x, y+h, x, y, rr);
+    ctx.arcTo(x, y, x+w, y, rr);
+    ctx.closePath();
+  }
+
+  function drawAll(){
+    resizeCanvasToDisplaySize();
+    clearCanvas();
+
+    const cx = cv.width/2;
+    const cy = cv.height/2;
+    const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5;
+
+    ctx.save();
+    ctx.translate(cx + view.panX, cy + view.panY);
+    ctx.scale(view.scale, view.scale);
+
+    drawCircle(0, 0, baseRadius);
+
+    for(const r of rows){
+      drawRow(r, 0, 0, baseRadius);
+    }
+
+    ctx.restore();
+
+    // HUD in screen coordinates (included in screenshot)
+    drawHUD();
+  }
+
+  function updateGlobalInfo(){
+    const total = rows.length;
+    const visible = rows.filter(r => r.visible).length;
+    const playing = rows.filter(r => r.animPlaying).length;
+
+    const tmax = rows.length
+      ? Math.max(...rows.map(r => Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME)))
+      : DEFAULT_ANIM_TIME;
+
+    globalInfoEl.innerHTML = `
+      <b>行数</b>: ${total}（表示: ${visible}）<br/>
+      <b>アニメ中</b>: ${playing} / ${total}<br/>
+      <b>全体同時再生の所要時間</b>: 約 ${tmax.toFixed(1)} 秒（最大の行に合わせて同期）<br/>
+      <b>選択</b>: 図形をクリック → 右上ではなく<b>キャンバス左上</b>に N/M を表示（PNGにも写る）
+    `;
+  }
+
+  // ===== Animation tick =====
+  function anyAnimationPlaying(){
+    return rows.some(r => r.animPlaying);
+  }
+
+  function tick(t){
+    if (lastT == null) lastT = t;
+    const dt = (t - lastT) / 1000;
+    lastT = t;
+
+    for(const r of rows){
+      if (!r.animPlaying) continue;
+
+      const info = getCycleInfo(r);
+      const edges = info.edges;
+      if (edges <= 0){
+        r.animPlaying = false;
+        continue;
+      }
+
+      r.animProgressEdges += (r.animSpeedEdgesPerSec * dt);
+
+      if (r.animProgressEdges >= edges){
+        r.animProgressEdges = edges;
+        r.animPlaying = false;
+
+        const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
+        if (card && card._setAnimIcon) card._setAnimIcon();
+      }
+    }
+
+    drawAll();
+    updateGlobalInfo();
+
+    if (anyAnimationPlaying()){
+      rafId = requestAnimationFrame(tick);
+    } else {
+      rafId = null;
+      lastT = null;
+
+      if (globalPlaying){
+        globalPlaying = false;
+        btnToggleAll.textContent = "▶ 全アニメ再生";
+      }
+    }
+  }
+
+  function scheduleDraw(){
+    drawAll();
+    updateGlobalInfo();
+
+    if (anyAnimationPlaying() && !rafId){
+      rafId = requestAnimationFrame(tick);
+    }
+    if (!anyAnimationPlaying() && rafId){
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      lastT = null;
+    }
+  }
+
+  // ===== Canvas interactions: zoom/pan + select =====
+  function getCanvasPixelPos(evt){
+    const rect = cv.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const x = (evt.clientX - rect.left) * dpr;
+    const y = (evt.clientY - rect.top) * dpr;
+    return { x, y };
+  }
+
+  function screenToWorld(px, py){
+    // Inverse of: screen = center + pan + scale*world
+    const cx = cv.width/2;
+    const cy = cv.height/2;
+    const wx = (px - cx - view.panX) / view.scale;
+    const wy = (py - cy - view.panY) / view.scale;
+    return { x: wx, y: wy };
+  }
+
+  function distPointToSegment(px, py, ax, ay, bx, by){
+    const vx = bx - ax, vy = by - ay;
+    const wx = px - ax, wy = py - ay;
+    const vv = vx*vx + vy*vy;
+    if (vv === 0) return Math.hypot(px-ax, py-ay);
+    let t = (wx*vx + wy*vy) / vv;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t*vx;
+    const cy = ay + t*vy;
+    return Math.hypot(px-cx, py-cy);
+  }
+
+  function rowHitTest(worldX, worldY){
+    // Use full (completed) polyline for hit test
+    const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5;
+    const best = { id: null, d: Infinity };
+
+    for (const r of rows){
+      if (!r.visible) continue;
+
+      const N = r.N, M = r.M;
+      if (!Number.isInteger(N) || !Number.isInteger(M) || N < 3 || M < 1) continue;
+
+      const step = normalizeStep(N, M);
+      if (step === 0) continue;
+
+      const info = getCycleInfo(r);
+      const cycle = info.cycle;
+      const pts = pointsOnCircle(N, 0, 0, baseRadius);
+
+      // Distance to each segment
+      for (let i=0;i<cycle.length-1;i++){
+        const a = pts[cycle[i]];
+        const b = pts[cycle[i+1]];
+        const d = distPointToSegment(worldX, worldY, a.x, a.y, b.x, b.y);
+        if (d < best.d){
+          best.d = d;
+          best.id = r.id;
+        }
+      }
+    }
+
+    // threshold in world units (stable in screen px)
+    const thresholdPx = 12; // px
+    const thresholdWorld = thresholdPx / view.scale;
+    if (best.id != null && best.d <= thresholdWorld) return best.id;
+    return null;
+  }
+
+  let isDragging = false;
+  let dragMoved = false;
+  let lastX = 0, lastY = 0;
+
+  cv.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    dragMoved = false;
+    const p = getCanvasPixelPos(e);
+    lastX = p.x; lastY = p.y;
+    cv.classList.add('dragging');
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+    cv.classList.remove('dragging');
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const p = getCanvasPixelPos(e);
+    const dx = p.x - lastX;
+    const dy = p.y - lastY;
+
+    if (Math.hypot(dx,dy) > 2) dragMoved = true;
+
+    view.panX += dx;
+    view.panY += dy;
+    lastX = p.x; lastY = p.y;
+    scheduleDraw();
+  });
+
+  cv.addEventListener('wheel', (e) => {
+    e.preventDefault();
+
+    const { x: mx, y: my } = getCanvasPixelPos(e);
+    const cx = cv.width / 2;
+    const cy = cv.height / 2;
+
+    const oldScale = view.scale;
+    const zoomFactor = Math.exp((-e.deltaY) * 0.0012);
+    let newScale = oldScale * zoomFactor;
+    newScale = Math.max(view.minScale, Math.min(view.maxScale, newScale));
+
+    const worldX = (mx - cx - view.panX) / oldScale;
+    const worldY = (my - cy - view.panY) / oldScale;
+
+    view.panX = (mx - cx) - newScale * worldX;
+    view.panY = (my - cy) - newScale * worldY;
+    view.scale = newScale;
+
+    scheduleDraw();
+  }, { passive:false });
+
+  cv.addEventListener('dblclick', () => {
+    resetView();
+    scheduleDraw();
+  });
+
+  cv.addEventListener('click', (e) => {
+    // If it was a drag, ignore click selection
+    if (dragMoved) return;
+
+    const p = getCanvasPixelPos(e);
+    const w = screenToWorld(p.x, p.y);
+    const hit = rowHitTest(w.x, w.y);
+    selectedRowId = hit; // can be null to hide
+    scheduleDraw();
+  });
+
+  // ===== Controls =====
+  btnAdd.addEventListener('click', () => addRow());
+
+  btnToggleAll.addEventListener('click', () => {
+    globalPlaying = !globalPlaying;
+
+    if (globalPlaying){
+      prepareSpeedsForAll();
+      for (const r of rows){
+        const info = getCycleInfo(r);
+        r.animPlaying = info.edges > 0;
+        r.animProgressEdges = 0.0;
+
+        const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
+        if (card && card._setAnimIcon) card._setAnimIcon();
+      }
+      btnToggleAll.textContent = "⏸ 全アニメ停止";
+      scheduleDraw();
+    } else {
+      for (const r of rows){
+        r.animPlaying = false;
+        const card = rowsEl.querySelector(`.rowCard[data-row-id="${r.id}"]`);
+        if (card && card._setAnimIcon) card._setAnimIcon();
+      }
+      btnToggleAll.textContent = "▶ 全アニメ再生";
+      scheduleDraw();
+    }
+  });
+
+  btnSave.addEventListener('click', () => {
+    // HUD is drawn on canvas, so it will be included automatically
+    const url = cv.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `NM-polygons.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  btnReset.addEventListener('click', () => {
+    // Reset everything to initial state (including theme & circle)
+    // Stop animations
+    globalPlaying = false;
+    btnToggleAll.textContent = "▶ 全アニメ再生";
+    if (rafId){
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      lastT = null;
+    }
+
+    // Clear rows UI + data
+    rows.splice(0, rows.length);
+    rowsEl.innerHTML = '';
+    selectedRowId = null;
+
+    // Reset id counter
+    nextId = 1;
+
+    // Reset view
+    resetView();
+
+    // Reset theme
+    themeState.theme = 'dark';
+    themeState.circleHex = '#b0b0b0';
+    optTheme.value = 'dark';
+    optCircleColor.value = themeState.circleHex;
+    applyTheme();
+
+    // Add initial row
+    addRow({ N: DEFAULT_N, M: DEFAULT_M, start: DEFAULT_START, animTimeSec: DEFAULT_ANIM_TIME });
+    scheduleDraw();
+  });
+
+  btnOpenGlobal.addEventListener('click', () => openGlobalSettings());
+
+  // ===== Init =====
+  window.addEventListener('resize', () => scheduleDraw());
+
+  // Set default theme/circle
+  applyTheme();
+
+  // Initial row
+  addRow({ N: DEFAULT_N, M: DEFAULT_M, start: DEFAULT_START, animTimeSec: DEFAULT_ANIM_TIME });
+
+})();
 </script>
 </body>
 </html>
