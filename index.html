@@ -300,12 +300,11 @@
 <body>
 <div class="wrap">
   <div class="panel">
-    <h1>正 N/M 角形（A完成版 + 拡張）</h1>
+    <h1>正 N/M 角形</h1>
     <div class="desc">
       円周上の <b>N</b> 等分点を、ステップ <b>M</b> で辿ります。<br/>
       作図は <b>始点（start）</b> を基準にし、<b>始点に戻った瞬間に終了</b>します。<br/>
-      キャンバス：<b>ホイール=ズーム</b>、<b>ドラッグ=移動</b>、<b>ダブルクリック=ビューリセット</b>。<br/>
-      図形をクリックすると、描画左上にその図形の <b>N/M</b> が表示されます（PNG保存にも写ります）。
+      図形をクリックすると、描画左上にその図形の <b>N/M</b> が表示されます。
     </div>
 
     <div class="controlsTop">
@@ -385,8 +384,7 @@
       </div>
 
       <div class="tiny">
-        ・始点は内部で <b>start mod N</b> に正規化（負でもOK）。<br/>
-        ・線は「途中まで伸びる」アニメで描画します。
+        ・始点は内部で <b>start mod N</b> に正規化する。<br/>
       </div>
     </div>
   </div>
@@ -418,10 +416,6 @@
         </div>
       </div>
 
-      <div class="tiny">
-        ・ライトは白単色（濃淡なし）で表示します。<br/>
-        ・HUDは巨大文字＆TeX風フォント（KaTeX）でキャンバスに描き、PNGにも写ります。
-      </div>
     </div>
   </div>
 </div>
@@ -1149,12 +1143,10 @@
 
     const x = 12, y = 12;
 
-    // ✅ キャンバス幅に合わせて「目一杯」大きく（上限も高め）
     const fontSize  = Math.min(110, Math.max(34, cv.width * 0.060));
     const fontSize2 = Math.min(86,  Math.max(26, fontSize * 0.72));
     const pad = Math.round(fontSize * 0.35);
 
-    // ✅ TeX風フォント（KaTeX）
     const texFont = `"KaTeX_Main","KaTeX_Math","Times New Roman",serif`;
 
     const line1 = `N=${r.N},  M=${r.M}`;
@@ -1511,4 +1503,5 @@
 </script>
 </body>
 </html>
+
 
