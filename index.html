@@ -40,7 +40,7 @@
       --hudFg: rgba(255,255,255,.92);
       --hudBorder: rgba(255,255,255,.18);
 
-      /* ✅ Modal vars (dark default) */
+      /* Modal vars (dark default) */
       --overlayBg: rgba(0,0,0,.55);
       --modalBg: rgba(17,24,39,.96);
       --modalBorder: rgba(255,255,255,.10);
@@ -88,11 +88,8 @@
       display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 14px;
       position: sticky; top: 0; z-index: 5;
       padding: 10px 0;
-
       background: var(--controlsBg);
-
       border-bottom: 1px solid rgba(255,255,255,.06);
-
       box-shadow:none;
       backdrop-filter:none;
     }
@@ -449,6 +446,10 @@
 
   const TAU = Math.PI * 2;
 
+  // ✅ 図形を下にずらす量（だいたい2cm ≒ 76px → 80px）
+  const DEFAULT_CENTER_Y_OFFSET_CSS = 80;
+  let centerYOffsetPx = 0;
+
   // Defaults
   const DEFAULT_ANIM_TIME = 8.0;
   const DEFAULT_START = 0;
@@ -526,6 +527,10 @@
       cv.width = w;
       cv.height = h;
     }
+
+    // ✅ 2cm相当の下オフセットをdevice pixelで保持
+    centerYOffsetPx = Math.round(DEFAULT_CENTER_Y_OFFSET_CSS * dpr);
+
     ctx.setTransform(1,0,0,1,0,0);
   }
 
@@ -946,7 +951,7 @@
       root.setProperty('--btnBgHover', 'rgba(0,0,0,.06)');
       root.setProperty('--btnBorder', 'rgba(0,0,0,.30)');
 
-      /* ✅ Modal (light) */
+      /* Modal (light) */
       root.setProperty('--overlayBg', 'rgba(0,0,0,.25)');
       root.setProperty('--modalBg', '#ffffff');
       root.setProperty('--modalBorder', 'rgba(0,0,0,.18)');
@@ -956,10 +961,8 @@
       root.setProperty('--inputBg', '#ffffff');
       root.setProperty('--shadow', '0 20px 60px rgba(0,0,0,.18)');
 
-      // Canvas background should be white
       root.setProperty('--canvasBg', '#ffffff');
 
-      // HUD readable on light
       root.setProperty('--hudBg', 'rgba(255,255,255,.92)');
       root.setProperty('--hudFg', 'rgba(17,24,39,.98)');
       root.setProperty('--hudBorder', 'rgba(0,0,0,.20)');
@@ -985,7 +988,7 @@
       root.setProperty('--boxBg', 'rgba(0,0,0,.18)');
       root.setProperty('--cardBg', 'rgba(255,255,255,.04)');
 
-      /* ✅ Modal (dark) */
+      /* Modal (dark) */
       root.setProperty('--overlayBg', 'rgba(0,0,0,.55)');
       root.setProperty('--modalBg', 'rgba(17,24,39,.96)');
       root.setProperty('--modalBorder', 'rgba(255,255,255,.10)');
@@ -1194,9 +1197,9 @@
     clearAndFillCanvas();
 
     const cx = cv.width/2;
-    const cy = cv.height/2;
+    const cy = cv.height/2 + centerYOffsetPx;  // ✅ 下にずらす
 
-    // ✅ 初期サイズを0.9倍
+    // 初期サイズを0.9倍
     const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5 * 0.9;
 
     ctx.save();
@@ -1210,7 +1213,6 @@
     }
     ctx.restore();
 
-    // HUD
     drawHUD();
   }
 
@@ -1296,7 +1298,7 @@
 
   function screenToWorld(px, py){
     const cx = cv.width/2;
-    const cy = cv.height/2;
+    const cy = cv.height/2 + centerYOffsetPx; // ✅ 下げた中心を使う
     const wx = (px - cx - view.panX) / view.scale;
     const wy = (py - cy - view.panY) / view.scale;
     return { x: wx, y: wy };
@@ -1315,7 +1317,6 @@
   }
 
   function rowHitTest(worldX, worldY){
-    // ✅ drawAll と同じ 0.9 倍を適用（当たり判定も一致させる）
     const baseRadius = Math.min(cv.width, cv.height) * 0.82 * 0.5 * 0.9;
     const best = { id: null, d: Infinity };
 
@@ -1382,8 +1383,9 @@
     e.preventDefault();
 
     const { x: mx, y: my } = getCanvasPixelPos(e);
+
     const cx = cv.width / 2;
-    const cy = cv.height / 2;
+    const cy = cv.height / 2 + centerYOffsetPx; // ✅ 下げた中心を使う
 
     const oldScale = view.scale;
     const zoomFactor = Math.exp((-e.deltaY) * 0.0012);
