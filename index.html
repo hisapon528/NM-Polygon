@@ -3,9 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>正 N/M 角形（複数・同時アニメ・ズーム/パン・全体設定・選択表示）</title>
+  <title>正 N/M 角形</title>
 
-  <!-- ✅ TeX風フォント（KaTeXフォント）を読み込み：Canvasでも KaTeX_Main が使える -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 
   <style>
@@ -27,7 +26,7 @@
       --btnBgHover: rgba(255,255,255,.10);
       --btnBorder: rgba(255,255,255,.14);
 
-      /* ✅ controls/boxes をテーマで統一（ライト時の「浮き」抑制に必須） */
+      /* controls/boxes */
       --controlsBg: linear-gradient(to bottom, var(--panelSolid), rgba(17,24,39,.60));
       --boxBg: rgba(0,0,0,.18);
       --cardBg: rgba(255,255,255,.04);
@@ -80,12 +79,12 @@
       position: sticky; top: 0; z-index: 5;
       padding: 10px 0;
 
-      /* ✅ テーマ変数で制御（ライト時は完全ベタ白へ） */
+      /*  テーマ変数で制御（ライト時は完全ベタ白へ） */
       background: var(--controlsBg);
 
       border-bottom: 1px solid rgba(255,255,255,.06);
 
-      /* ✅ 浮き出し防止 */
+      /*  浮き出し防止 */
       box-shadow:none;
       backdrop-filter:none;
     }
@@ -111,7 +110,7 @@
       border:1px solid var(--border);
       border-radius:14px;
 
-      /* ✅ テーマ変数で制御 */
+      /* テーマ変数で制御 */
       background: var(--boxBg);
 
       margin-bottom: 12px;
@@ -126,10 +125,10 @@
       border:1px solid rgba(255,255,255,.08);
       border-radius:14px;
 
-      /* ✅ テーマ変数で制御 */
+      /* テーマ変数で制御 */
       background: var(--cardBg);
 
-      /* ✅ 浮き出し防止 */
+      /* 浮き出し防止 */
       box-shadow:none;
     }
     .rowCard .label{
@@ -157,7 +156,7 @@
       font-size:16px;
       color: var(--fg);
 
-      /* ✅ 浮き出し防止 */
+      /* 浮き出し防止 */
       box-shadow:none;
     }
     .iconBtn:hover{ background: rgba(255,255,255,.10); }
@@ -183,14 +182,14 @@
       border:1px solid var(--border);
       border-radius:14px;
 
-      /* ✅ テーマ変数で制御 */
+      /* テーマ変数で制御 */
       background: var(--boxBg);
 
       font-size:12px;
       line-height:1.65;
       color: var(--muted);
 
-      /* ✅ 浮き出し防止 */
+      /* 浮き出し防止 */
       box-shadow:none;
     }
     .globalBox b{ color:var(--fg); }
@@ -321,11 +320,7 @@
     <div class="globalBox" id="globalInfo"></div>
 
     <div class="footerNote">
-      ✅ 左パネルのみスクロール（行をいくら増やしてもOK）<br/>
-      ✅ 右の描画は常に中央＆正方形（外接円が歪みません）<br/>
-      ※ N,M が空欄の行は描画しません。<br/>
-      ※ M は内部で <b>M mod N</b>、始点は <b>start mod N</b> に正規化。<br/>
-      ※ 全アニメ再生は最大時間に合わせて同期して終了します。
+      ※ M は内部で <b>M mod N</b>、始点は <b>start mod N</b> に正規化。<br/>。
     </div>
   </div>
 
@@ -1238,10 +1233,8 @@
       : DEFAULT_ANIM_TIME;
 
     globalInfoEl.innerHTML = `
-      <b>行数</b>: ${total}（表示: ${visible}）<br/>
+      <b>表示数</b>: ${total}<br/>
       <b>アニメ中</b>: ${playing} / ${total}<br/>
-      <b>全体同時再生の所要時間</b>: 約 ${tmax.toFixed(1)} 秒（最大時間に同期）<br/>
-      <b>注意</b>: N/M が空欄の行は描画しません
     `;
   }
 
@@ -1518,3 +1511,4 @@
 </script>
 </body>
 </html>
+
