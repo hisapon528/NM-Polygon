@@ -934,13 +934,11 @@
     const root = document.documentElement.style;
 
     if (themeState.theme === 'light'){
-      // ✅ 白単色（濃淡なし）
       root.setProperty('--bg', '#ffffff');
       root.setProperty('--bgImg', 'none');
       root.setProperty('--fg', '#111827');
       root.setProperty('--muted', '#374151');
 
-      // ✅ パネル/カード/ボックス：全部ベタ白に統一（浮き防止）
       root.setProperty('--panel', '#ffffff');
       root.setProperty('--panelSolid', '#ffffff');
       root.setProperty('--controlsBg', '#ffffff');
@@ -950,7 +948,6 @@
       root.setProperty('--border', 'rgba(0,0,0,.12)');
       root.setProperty('--border2', 'rgba(0,0,0,.16)');
 
-      // ✅ ボタン文字が同化しないよう調整
       root.setProperty('--btnBg', '#ffffff');
       root.setProperty('--btnBgHover', 'rgba(0,0,0,.06)');
       root.setProperty('--btnBorder', 'rgba(0,0,0,.30)');
@@ -980,7 +977,6 @@
       root.setProperty('--btnBgHover', 'rgba(255,255,255,.10)');
       root.setProperty('--btnBorder', 'rgba(255,255,255,.14)');
 
-      // ✅ 追加した変数を dark に戻す
       root.setProperty('--controlsBg', 'linear-gradient(to bottom, var(--panelSolid), rgba(17,24,39,.60))');
       root.setProperty('--boxBg', 'rgba(0,0,0,.18)');
       root.setProperty('--cardBg', 'rgba(255,255,255,.04)');
@@ -1008,8 +1004,6 @@
 
   // ===== Drawing =====
   function clearAndFillCanvas(){
-    // Always fill so screenshots include background.
-    // ✅ ライトは必ず純白
     const fill = (themeState.theme === 'dark') ? '#0b0f17' : '#ffffff';
     ctx.setTransform(1,0,0,1,0,0);
     ctx.fillStyle = fill;
@@ -1128,7 +1122,6 @@
     ctx.closePath();
   }
 
-  // ✅ HUD：巨大文字＋TeX風フォント
   function drawHUD(){
     if (selectedRowId == null) return;
     const r = rows.find(x => x.id === selectedRowId);
@@ -1503,5 +1496,6 @@
 </script>
 </body>
 </html>
+
 
 
