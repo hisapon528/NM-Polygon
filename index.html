@@ -377,8 +377,8 @@
       </div>
 
       <div class="tiny">
-        ※始点は内部で <b>start mod N</b> に正規化する。<br/>
-        ※頂点番号は背景に応じて見やすい色（自動）で描画します。<br/>
+        ※始点は内部で <b>start mod N</b> に正規化します。<br/>
+        ※頂点番号は背景に応じて見やすい色に自動で描画します。<br/>
       </div>
     </div>
   </div>
@@ -469,7 +469,7 @@
   ];
 
   // =========================================================
-  // 2) 定義３.１から導かれる数式を管理するクラス
+  // 2) 数式を管理するクラス
   // =========================================================
   class MathBase {
     /**
@@ -493,7 +493,7 @@
    * ModularMath：合同（mod）計算を扱う
    * - MathBase を継承し、gcd も使えるようにする
      * 常に 0..m-1 の範囲に入る
-     * - JS の % は負があり得るので補正
+     * 負があり得るので補正
   */
   class ModularMath extends MathBase {
     static mod(n, m) {
@@ -522,8 +522,7 @@
 
       let cur = s;
   
-      // “ループ防止”：本来は s に戻れば終わるが、
-      // 万一戻らないケースを検出するために seen を持つ
+      // “ループ防止”：本来は s に戻れば終わるが，万一戻らないケースを検出するために seen を持つ
       const seen = new Set([cur]);
 
       while (true) {
@@ -707,7 +706,7 @@
         root.setProperty('--circle', this.hexToRgba(this.state.circleHex, 0.75));
       }
 
-      // テーマを変えたら再描画（元コードと同じ）
+      // テーマを変えたら再描画
       scheduleDrawFn();
     }
   }
@@ -801,7 +800,7 @@
       });
     }
 
-    /** UI表示用のタイトル（カードの設定モーダルなどで使用） */
+    /** UI表示用のタイトル（設定モーダルなどで使用） */
     rowTitle(r) {
       const n = (r.N == null ? "" : r.N);
       const m = (r.M == null ? "" : r.M);
@@ -938,7 +937,7 @@
         const info = app.getCycleInfo(r);
         const sw = `<span class="swatch" style="background:${r.lineColor}"></span>`;
         meta.innerHTML =
-          `start=${info.startN}, step=M mod N=${info.step}, gcd(N,M)=${info.d}, 閉路長L=${info.L}, time=${r.animTimeSec.toFixed(1)}s ${sw}`;
+          `start=${info.startN}, step(M)=${info.step}, gcd(N,M)=${info.d}, 閉路長L=${info.L}, time=${r.animTimeSec.toFixed(1)}s ${sw}`;
       }
 
       /** “全アニメ再生中” だったら、個別操作を優先して停止する */
@@ -1051,7 +1050,7 @@
         app.scheduleDraw();
       });
 
-      // “入力欄のカード内部メソッド” を付与（元コード互換）
+      // “入力欄のカード内部メソッド” を付与
       card._updateMeta = updateMeta;
       card._setAnimIcon = () => { btnAnim.textContent = r.animPlaying ? '⏸' : '▶'; };
 
@@ -1099,10 +1098,6 @@
 
       this.scheduleDraw();
     }
-
-    // --------------------------
-    // Row settings modal
-    // --------------------------
 
     /** 入力欄の設定を開く（チェック・色・時間などを編集） */
     openRowSettings(r, card) {
@@ -1186,10 +1181,6 @@
 
       this.scheduleDraw();
     }
-
-    // --------------------------
-    // Global settings modal
-    // --------------------------
 
     /** 全体設定を開く */
     openGlobalSettings() {
@@ -1843,3 +1834,4 @@
 </script>
 </body>
 </html>
+
