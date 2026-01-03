@@ -489,7 +489,7 @@
 
   /**
    * ModularMath：合同（mod）計算を扱う
-   * - MathBase を継承し、gcd も使えるようにする
+   * - MathBase を継承し,gcd も使えるようにする
      * 常に 0..m-1 の範囲に入る
      * 負があり得るので補正
   */
@@ -515,7 +515,7 @@
       const s = ModularMath.normalizeStart(N, start);
       const seq = [s];
 
-      // N<=0 or step=0 の場合は、動かずに終わる
+      // N<=0 or step=0 の場合は,動かずに終わる
       if (N <= 0 || step === 0) return seq;
 
       let cur = s;
@@ -549,8 +549,8 @@
   class GeometryUtils extends ModularMath {
     /**
      * 円周を N 等分した点列を返す
-     * - 最初の点は “真上（-π/2）” からスタート（元コード仕様）
-     * - cx,cy は円の中心、r は半径
+     * - 最初の点は “真上（-π/2）” からスタート
+     * - cx,cy は円の中心,r は半径
      */
     static pointsOnCircle(N, cx, cy, r) {
       const pts = [];
@@ -766,10 +766,6 @@
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
-    // --------------------------
-    // Row defaults / utilities
-    // --------------------------
-
     /** 入力欄追加時のデフォルト*/
     newRowDefaults() {
       const idx = this.rows.length;
@@ -834,7 +830,7 @@
       // 辺の本数（点列の長さ - 1）
       const edges = Math.max(0, cycle.length - 1);
 
-      // gcd（閉路の本数などの理解に役立つ指標）
+      // gcd（最大公約数）
       const d = gcd(N, step);
 
       // 閉路長 L（このコードでは edges と同じ）
@@ -917,7 +913,7 @@
       const meta = document.createElement('div');
       meta.className = 'rowMeta';
 
-      /** start/step/gcd/閉路長/時間/色の情報を入力欄の下に表示 */
+      /** start/step/gcd/辺の本数/時間/色の情報を入力欄の下に表示 */
       function updateMeta() {
         const N = r.N, M = r.M;
         if (!Number.isInteger(N) || !Number.isInteger(M)) {
@@ -935,7 +931,7 @@
         const info = app.getCycleInfo(r);
         const sw = `<span class="swatch" style="background:${r.lineColor}"></span>`;
         meta.innerHTML =
-          `start=${info.startN}, step(M)=${info.step}, gcd(N,M)=${info.d}, 閉路長L=${info.L}, time=${r.animTimeSec.toFixed(1)}s ${sw}`;
+          `start=${info.startN}, step(M)=${info.step}, gcd(N,M)=${info.d}, L=${info.L}, time=${r.animTimeSec.toFixed(1)}s ${sw}`;
       }
 
       /** “全アニメ再生中” だったら、個別操作を優先して停止する */
@@ -1832,5 +1828,6 @@
 </script>
 </body>
 </html>
+
 
 
