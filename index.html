@@ -69,7 +69,7 @@
       width:100vw;
     }
 
-    /* Left panel scroll only */
+    /*入力パネルのみスクロールバーを作成*/
     .panel{
       height:100vh;
       overflow-y:auto;
@@ -185,7 +185,7 @@
     }
     .globalBox b{ color:var(--fg); }
 
-    /* Right side fixed center */
+    /*スクリーンショットのときに図形が表示パネルと重ならない位置に描画*/
     .canvasWrap{
       height:100vh;
       display:flex;
@@ -309,7 +309,7 @@
     <div class="globalBox" id="globalInfo"></div>
 
     <div class="footerNote">
-      ※ M は内部で <b>M mod N</b>、始点は <b>start mod N</b> に正規化します。<br/>
+      ※ M は内部で <b>M (mod N)</b>，始点は <b>start (mod N)</b> に正規化します。<br/>
     </div>
   </div>
 
@@ -320,7 +320,7 @@
   </div>
 </div>
 
-<!-- 行設定モーダル -->
+<!-- 入力設定モーダル -->
 <div class="modalOverlay" id="rowModalOverlay">
   <div class="modal" role="dialog" aria-modal="true">
     <div class="modalHeader">
@@ -488,8 +488,8 @@
   }
 
   /**
-   * ModularMath：合同（mod）計算を扱う
-   * - MathBase を継承し,gcd も使えるようにする
+   　* ModularMath：合同（mod）計算を扱う
+   　* - MathBase を継承し,gcd も使えるようにする
      * 常に 0..m-1 の範囲に入る
      * 負があり得るので補正
   */
@@ -509,8 +509,8 @@
     }
 
     /**
-     * step(定義3.1のM)で巡回し,始点に戻ったところで終了する“巡回列”を作る
-     */
+     * step(M)とばしで巡回し,始点に戻ったところで終了する“巡回列”を作る
+   */
     static buildCycle(N, step, start) {
       const s = ModularMath.normalizeStart(N, start);
       const seq = [s];
@@ -544,14 +544,14 @@
 
   /**
    * GeometryUtils：幾何ユーティリティ
-   * - ModularMath を継承（必要なら mod/gcd も使える）
-   */
+   * ModularMath を継承（必要なら mod/gcd も使える）
+  */
   class GeometryUtils extends ModularMath {
     /**
      * 円周を N 等分した点列を返す
      * - 最初の点は “真上（-π/2）” からスタート
      * - cx,cy は円の中心,r は半径
-     */
+   */
     static pointsOnCircle(N, cx, cy, r) {
       const pts = [];
       for (let k = 0; k < N; k++) {
@@ -628,7 +628,7 @@
 
     /**
      * 現在のテーマ設定を CSS 変数に反映
-     */
+    */
     applyTheme(scheduleDrawFn) {
       const root = document.documentElement.style;
 
@@ -741,13 +741,9 @@
       this.modalRowCard = null;
     }
 
-    // --------------------------
-    // Canvas sizing
-    // --------------------------
-
     /**
      * CSS上の表示サイズに合わせて、Canvasの内部解像度（dpr）を調整する
-     */
+    */
     resizeCanvasToDisplaySize() {
       const dpr = window.devicePixelRatio || 1;
       const rect = cv.getBoundingClientRect();
@@ -804,19 +800,19 @@
     /**
      * 入力欄の “巡回情報” を計算してまとめて返す
      * - valid=false のときは描画しない
-     */
+    */
     getCycleInfo(r) {
       const N = r.N, M = r.M;
 
-      // 入力チェック：整数で、N>=3, M>=1 であること
+      // 入力チェック：整数で，N>=3, M>=1 であること
       if (!Number.isInteger(N) || !Number.isInteger(M) || N < 3 || M < 1) {
         return { edges: 0, step: 0, L: 0, d: 0, startN: 0, cycle: [0], valid: false };
       }
 
-      // M mod N
+      // M mod Nで正規化し，飛ばす点の個数
       const step = normalizeStep(N, M);
 
-      // start を N で正規化
+      // start を N で正規化し，始点となる点
       const startN = normalizeStart(N, r.start);
 
       // M = 0 の場合は動かない（頂点1つ）
@@ -833,7 +829,7 @@
       // gcd（最大公約数）
       const d = gcd(N, step);
 
-      // 閉路長 L（このコードでは edges と同じ）
+      // 周期 L（このコードでは edges と同じ）
       const L = edges;
 
       return { edges, step, L, d, startN, cycle, valid: true };
@@ -842,7 +838,7 @@
     /**
      * 全アニメ再生のための “速度（edges/sec）” を揃える
      * - 一番長い時間に合わせて、全行が同じ“終了タイミング”になるようにする
-     */
+    */
     prepareSpeedsForAll() {
       const validRows = this.rows.filter(r => this.getCycleInfo(r).valid && this.getCycleInfo(r).edges > 0);
       const times = validRows.map(r => Math.max(0.2, Number(r.animTimeSec) || DEFAULT_ANIM_TIME));
@@ -858,10 +854,9 @@
     }
 
     /**
-     * n
-     入力欄（N/M入力・再生・設定・削除）を生成
+     * 入力欄（N/M入力・再生・設定・削除）を生成
      * - DOM構造、イベント、内部メソッド（_updateMeta/_setAnimIcon）も付与
-     */
+    */
     createRowUI(r) {
       const app = this; // this が変わるので退避しておく
 
@@ -1063,7 +1058,7 @@
       return card;
     }
 
-    /** 入力欄を追加して、UIにも反映 */
+    /** 入力欄を追加して，UIにも反映 */
     addRow(initial) {
       const r = Object.assign(this.newRowDefaults(), initial || {});
 
@@ -1125,7 +1120,7 @@
     /**
      * 入力値を Row に反映
      * - 反映したら設定が変わるのでアニメは止める
-     */
+    */
     syncRowModalToRow() {
       if (!this.modalRow) return;
       const r = this.modalRow;
@@ -1227,7 +1222,7 @@
      * 入力欄1行分の図形を描く
      * - visible/valid を満たさないと描かない
      * - 点／ラベル／線（アニメ進捗）を順に描画
-     */
+    */
     drawRow(r, cx, cy, radius) {
       if (!r.visible) return;
 
@@ -1461,7 +1456,7 @@
      * requestAnimationFrame の tick
      * - dt（秒）を計算し、各入力欄の animProgressEdges を進める
      * - 終了した図形は animPlaying=false にする
-     */
+    */
     tick(t) {
       if (this.lastT == null) this.lastT = t;
       const dt = (t - this.lastT) / 1000;
@@ -1512,7 +1507,7 @@
      * “描画を要求する” ための関数
      * - その場で drawAll/updateGlobalInfo を行う
      * - アニメ中なら raf を走らせ、止まっているなら raf を止める
-     */
+    */
     scheduleDraw() {
       this.drawAll();
       this.updateGlobalInfo();
@@ -1828,6 +1823,7 @@
 </script>
 </body>
 </html>
+
 
 
 
