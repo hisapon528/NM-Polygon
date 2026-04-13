@@ -309,7 +309,7 @@
     <div class="globalBox" id="globalInfo"></div>
 
     <div class="footerNote">
-      ※ M は内部で <b>M (mod N)</b>，始点は <b>start (mod N)</b> に正規化します。<br/>
+      ※ M は内部で <b>M (mod N)</b>，始点は <b>start (mod N)</b> に変換します。<br/>
     </div>
   </div>
 
@@ -376,7 +376,7 @@
       </div>
 
       <div class="tiny">
-        ※始点は内部で <b>start mod N</b> に正規化します。<br/>
+        ※始点は内部で <b>start mod N</b> に変換します。<br/>
       </div>
     </div>
   </div>
@@ -472,8 +472,8 @@
   class MathBase {
     /**
      * ユークリッドの互除法で最大公約数 gcd(a,b) を返す
-     * - a,b が負でも abs を取って対応する。
-     * - 戻り値は常に 0 以上
+     * - a,b が負でも絶対値を取って対応する。
+     * - 戻り値は常に 0 以上に設定する
      */
     static gcd(a, b) {
       a = Math.abs(a);
@@ -491,26 +491,24 @@
    　* ModularMath：合同（mod）計算を扱う
    　* - MathBase を継承し,gcd も使えるようにする
      * 常に 0..m-1 の範囲に入る
-     * 負があり得るので補正
+     * 負があり得るので補正するかも？
   */
   class ModularMath extends MathBase {
     static mod(n, m) {
       return ((n % m) + m) % m;
     }
 
-    /** M を N で正規化（step = M mod N） */
+    /**step = M mod N */
     static normalizeStep(N, M) {
       return ModularMath.mod(M, N);
     }
 
-    /** start を N で正規化（startN = start mod N） */
+    /** startN = start mod N */
     static normalizeStart(N, start) {
       return ModularMath.mod(start, N);
     }
 
-    /**
-     * step(M)とばしで巡回し,始点に戻ったところで終了する“巡回列”を作る
-   */
+    /**step(M)とばしで巡回し,始点に戻ったところで終了する“巡回列”を作る*/
     static buildCycle(N, step, start) {
       const s = ModularMath.normalizeStart(N, start);
       const seq = [s];
@@ -520,7 +518,7 @@
 
       let cur = s;
   
-      // “ループ防止”：本来は s に戻れば終わるが，万一戻らないケースを検出するために seen を持つ
+      // “ループ防止”：本来は s に戻れば終わるが，万一戻らないケースを検出するために seen を持ってバグを防止する。
       const seen = new Set([cur]);
 
       while (true) {
@@ -530,12 +528,12 @@
         // 始点に戻ったら終了
         if (cur === s) break;
 
-        // すでに訪れた点に再訪してしまったら終了
+        // すでに訪れた点に再訪してしまったら終了（一応のバグ防止）
         if (seen.has(cur)) break;
 
         seen.add(cur);
 
-        // 長すぎたら打ち切る
+        // 長すぎたら打ち切る（一応のバグ防止）
         if (seq.length > N + 2) break;
       }
       return seq;
@@ -544,7 +542,7 @@
 
   /**
    * GeometryUtils：幾何ユーティリティ
-   * ModularMath を継承（必要なら mod/gcd も使える）
+   * ModularMath を継承しているので， mod/gcd も使えるようにしてる
   */
   class GeometryUtils extends ModularMath {
     /**
@@ -566,7 +564,7 @@
   }
 
   // =========================================================
-  // 3) ★ “関数 API” を維持するラッパー（使用は一切変えない）
+  // 3) ★ “関数 API” を維持
   // =========================================================
 
   function gcd(a, b) { return MathBase.gcd(a, b); }
@@ -577,7 +575,7 @@
   function buildCycle(N, step, start) { return ModularMath.buildCycle(N, step, start); }
 
   // =========================================================
-  // 4) View（ズーム・パン）
+  // 4) View（ズーム・パン）にかんするコード
   // =========================================================
   class Viewport {
     constructor() {
@@ -712,7 +710,7 @@
   const themeManager = new ThemeManager();
 
   // =========================================================
-  // 6) 入力欄（Row）のモデル
+  // 6) 入力欄のモデル
   // =========================================================
   class RowModel {
     constructor(initial) {
