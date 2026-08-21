@@ -192,9 +192,11 @@
       align-items:center;
       justify-content:center;
       padding:18px;
+      min-width:0;
     }
     .square{
-      width: min(940px, calc(100vw - 490px));
+      width:min(940px, 90%);
+      max-height:94vh;
       aspect-ratio: 1 / 1;
       border-radius:18px;
       border:1px solid rgba(255,255,255,.10);
@@ -285,6 +287,46 @@
       line-height:1.55;
       padding-bottom: 16px;
     }
+
+
+    /* =====================================
+       レスポンシブ対応
+       画面幅が900px以下なら縦並び
+    ===================================== */
+    @media (max-width:900px){
+      body{
+        overflow:auto;
+      }
+
+      .wrap{
+        display:flex;
+        flex-direction:column;
+        width:100%;
+        height:auto;
+        min-height:100vh;
+      }
+
+      .panel{
+        width:100%;
+        height:auto;
+        overflow-y:visible;
+        border-right:none;
+        border-bottom:1px solid var(--border);
+      }
+
+      .canvasWrap{
+        width:100%;
+        height:auto;
+        min-height:100vw;
+        padding:12px;
+      }
+
+      .square{
+        width:min(94vw,700px);
+        max-height:none;
+        aspect-ratio:1 / 1;
+      }
+    }
   </style>
 </head>
 
@@ -294,8 +336,7 @@
     <h1>正 N/M 角形</h1>
     <div class="desc">
       円周上を <b>N</b> 等分した点を，<b>M</b> 個とばしで辿ります。<br/>
-      </div>
-    
+    </div>
     <div class="controlsTop">
       <button id="addRow" class="btnPrimary">＋ 追加</button>
       <button id="resetAll" class="btnWarn">リセット</button>
@@ -1816,7 +1857,6 @@
 </script>
 </body>
 </html>
-
 
 
 
