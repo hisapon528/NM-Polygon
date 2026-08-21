@@ -129,10 +129,28 @@
       background: var(--cardBg);
       box-shadow:none;
     }
+    /* 並べ替え中：つかんだカードを浮かせて分かりやすくする */
     .rowCard.reordering{
-      opacity:.72;
-      outline:2px solid var(--border2);
+      position:fixed;
+      z-index:2000;
+      margin:0;
+      opacity:.96;
+      outline:3px solid var(--border2);
+      box-shadow:0 16px 36px rgba(0,0,0,.38);
+      transform:scale(1.025);
+      pointer-events:none;
+      transition:box-shadow .12s ease, transform .12s ease, opacity .12s ease;
     }
+
+    /* 元の位置・挿入先を示す空き枠 */
+    .rowPlaceholder{
+      border:2px dashed var(--border2);
+      border-radius:14px;
+      background:var(--cardBg);
+      opacity:.55;
+      transition:height .12s ease;
+    }
+
     .dragHandle{
       touch-action:none;
       cursor:grab;
@@ -930,44 +948,103 @@
       btnDrag.textContent = '≡';
 
       let rowReordering = false;
+      let rowReorderPointerId = null;
+      let rowDragOffsetY = 0;
+      let rowPlaceholder = null;
 
+      // ハンドルを押したら並べ替え開始
+      // カード本体は指・マウスについて浮かせ、
+      // placeholder（点線枠）で「ここに入る」を表示する。
       btnDrag.addEventListener('pointerdown', (e) => {
+        if (e.button != null && e.button !== 0) return;
+
         e.preventDefault();
+        e.stopPropagation();
+
+        const rect = card.getBoundingClientRect();
+
         rowReordering = true;
+        rowReorderPointerId = e.pointerId;
+        rowDragOffsetY = e.clientY - rect.top;
+
+        // 元の位置を保つための空き枠を作る
+        rowPlaceholder = document.createElement('div');
+        rowPlaceholder.className = 'rowPlaceholder';
+        rowPlaceholder.style.height = `${rect.height}px`;
+        rowsEl.insertBefore(rowPlaceholder, card);
+
+        // つかんだカードを画面上に浮かせる
+        card.style.left = `${rect.left}px`;
+        card.style.top = `${rect.top}px`;
+        card.style.width = `${rect.width}px`;
+        card.style.height = `${rect.height}px`;
         card.classList.add('reordering');
-        btnDrag.setPointerCapture(e.pointerId);
+
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'grabbing';
       });
 
-      btnDrag.addEventListener('pointermove', (e) => {
-        if (!rowReordering) return;
+      const moveRowReorder = (e) => {
+        if (!rowReordering || e.pointerId !== rowReorderPointerId) return;
         e.preventDefault();
+
+        // つかんだカードを指・マウスに追従させる
+        card.style.top = `${e.clientY - rowDragOffsetY}px`;
 
         const others = Array.from(rowsEl.querySelectorAll('.rowCard'))
           .filter(el => el !== card);
 
-        const next = others.find(el => {
+        let next = null;
+        for (const el of others) {
           const rect = el.getBoundingClientRect();
-          return e.clientY < rect.top + rect.height / 2;
-        });
+          const middleY = rect.top + rect.height / 2;
 
-        if (next) rowsEl.insertBefore(card, next);
-        else rowsEl.appendChild(card);
+          if (e.clientY < middleY) {
+            next = el;
+            break;
+          }
+        }
 
-        app.syncRowsOrderFromDOM();
-      });
+        // カード自体ではなく点線のplaceholderだけを動かす。
+        // これにより、ドラッグ中も挿入先が視覚的に分かる。
+        if (next) {
+          if (rowPlaceholder.nextElementSibling !== next) {
+            rowsEl.insertBefore(rowPlaceholder, next);
+          }
+        } else {
+          rowsEl.appendChild(rowPlaceholder);
+        }
+      };
 
       const finishRowReorder = (e) => {
-        if (!rowReordering) return;
+        if (!rowReordering || e.pointerId !== rowReorderPointerId) return;
+
         rowReordering = false;
-        card.classList.remove('reordering');
-        if (btnDrag.hasPointerCapture(e.pointerId)) {
-          btnDrag.releasePointerCapture(e.pointerId);
+        rowReorderPointerId = null;
+
+        // placeholder の位置へカードを確定
+        if (rowPlaceholder && rowPlaceholder.parentNode === rowsEl) {
+          rowsEl.insertBefore(card, rowPlaceholder);
+          rowPlaceholder.remove();
         }
+        rowPlaceholder = null;
+
+        card.classList.remove('reordering');
+        card.style.left = '';
+        card.style.top = '';
+        card.style.width = '';
+        card.style.height = '';
+
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+
+        // 最終的なDOM順を描画順へ反映
         app.syncRowsOrderFromDOM();
       };
 
-      btnDrag.addEventListener('pointerup', finishRowReorder);
-      btnDrag.addEventListener('pointercancel', finishRowReorder);
+      window.addEventListener('pointermove', moveRowReorder, { passive: false });
+      window.addEventListener('pointerup', finishRowReorder);
+      window.addEventListener('pointercancel', finishRowReorder);
 
       // --- N input ---
       const fieldN = document.createElement('div');
