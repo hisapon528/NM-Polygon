@@ -120,7 +120,7 @@
 
     .rowCard{
       display:grid;
-      grid-template-columns: 1fr 1fr auto auto auto;
+      grid-template-columns: auto 1fr 1fr auto auto auto;
       gap:8px;
       align-items:center;
       padding:10px;
@@ -129,6 +129,16 @@
       background: var(--cardBg);
       box-shadow:none;
     }
+    .rowCard.reordering{
+      opacity:.72;
+      outline:2px solid var(--border2);
+    }
+    .dragHandle{
+      touch-action:none;
+      cursor:grab;
+      user-select:none;
+    }
+    .dragHandle:active{ cursor:grabbing; }
     .rowCard .label{
       font-size:11px; color:var(--muted); margin-bottom:4px;
     }
@@ -204,7 +214,11 @@
       display:flex; align-items:center; justify-content:center;
       overflow:hidden;
     }
-    canvas{ width:100%; height:100%; display:block; cursor: grab; }
+    canvas{
+      width:100%; height:100%; display:block; cursor: grab;
+      touch-action:none;
+      overscroll-behavior:contain;
+    }
     canvas.dragging{ cursor: grabbing; }
 
     /* Modal */
@@ -887,8 +901,18 @@
       }
     }
 
+    /** 入力パネルのDOM順に this.rows を並べ直す */
+    syncRowsOrderFromDOM() {
+      const ids = Array.from(rowsEl.querySelectorAll('.rowCard'))
+        .map(card => Number(card.dataset.rowId));
+
+      const rowMap = new Map(this.rows.map(r => [r.id, r]));
+      this.rows = ids.map(id => rowMap.get(id)).filter(Boolean);
+      this.scheduleDraw();
+    }
+
     /**
-     * 入力欄（N/M入力・再生・設定・削除）を生成
+     * 入力欄（N/M入力・並べ替え・再生・設定・削除）を生成
      * - DOM構造、イベント、内部メソッド（_updateMeta/_setAnimIcon）も付与
     */
     createRowUI(r) {
@@ -897,6 +921,53 @@
       const card = document.createElement('div');
       card.className = 'rowCard';
       card.dataset.rowId = String(r.id);
+
+      // --- 並べ替えハンドル ---
+      const btnDrag = document.createElement('button');
+      btnDrag.className = 'iconBtn dragHandle';
+      btnDrag.type = 'button';
+      btnDrag.title = 'ドラッグして描画順を変更';
+      btnDrag.textContent = '≡';
+
+      let rowReordering = false;
+
+      btnDrag.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        rowReordering = true;
+        card.classList.add('reordering');
+        btnDrag.setPointerCapture(e.pointerId);
+      });
+
+      btnDrag.addEventListener('pointermove', (e) => {
+        if (!rowReordering) return;
+        e.preventDefault();
+
+        const others = Array.from(rowsEl.querySelectorAll('.rowCard'))
+          .filter(el => el !== card);
+
+        const next = others.find(el => {
+          const rect = el.getBoundingClientRect();
+          return e.clientY < rect.top + rect.height / 2;
+        });
+
+        if (next) rowsEl.insertBefore(card, next);
+        else rowsEl.appendChild(card);
+
+        app.syncRowsOrderFromDOM();
+      });
+
+      const finishRowReorder = (e) => {
+        if (!rowReordering) return;
+        rowReordering = false;
+        card.classList.remove('reordering');
+        if (btnDrag.hasPointerCapture(e.pointerId)) {
+          btnDrag.releasePointerCapture(e.pointerId);
+        }
+        app.syncRowsOrderFromDOM();
+      };
+
+      btnDrag.addEventListener('pointerup', finishRowReorder);
+      btnDrag.addEventListener('pointercancel', finishRowReorder);
 
       // --- N input ---
       const fieldN = document.createElement('div');
@@ -1078,6 +1149,7 @@
       card._setAnimIcon = () => { btnAnim.textContent = r.animPlaying ? '⏸' : '▶'; };
 
       // DOM組み立て
+      card.appendChild(btnDrag);
       card.appendChild(fieldN);
       card.appendChild(fieldM);
       card.appendChild(btnAnim);
@@ -1665,45 +1737,121 @@
         themeManager.applyTheme(() => this.scheduleDraw());
       });
 
-      // --- Canvas interactions ---
-      let isDragging = false;
+      // --- Canvas interactions（PC＋スマホ共通） ---
       let dragMoved = false;
-      let lastX = 0, lastY = 0;
+      const activePointers = new Map();
+      let pinchPrevDist = null;
+      let pinchPrevMid = null;
 
-      cv.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        dragMoved = false;
+      function firstTwoPointers() {
+        return Array.from(activePointers.values()).slice(0, 2);
+      }
+
+      function pointerMidAndDist() {
+        const pts = firstTwoPointers();
+        if (pts.length < 2) return null;
+        const [a, b] = pts;
+        return {
+          midX: (a.x + b.x) / 2,
+          midY: (a.y + b.y) / 2,
+          dist: Math.hypot(b.x - a.x, b.y - a.y),
+        };
+      }
+
+      cv.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         const p = this.getCanvasPixelPos(e);
-        lastX = p.x;
-        lastY = p.y;
+        activePointers.set(e.pointerId, p);
+        cv.setPointerCapture(e.pointerId);
         cv.classList.add('dragging');
+
+        if (activePointers.size === 1) {
+          dragMoved = false;
+          pinchPrevDist = null;
+          pinchPrevMid = null;
+        } else if (activePointers.size === 2) {
+          const pinch = pointerMidAndDist();
+          pinchPrevDist = pinch ? pinch.dist : null;
+          pinchPrevMid = pinch ? { x: pinch.midX, y: pinch.midY } : null;
+          dragMoved = true;
+        }
       });
 
-      window.addEventListener('mouseup', () => {
-        isDragging = false;
-        cv.classList.remove('dragging');
+      cv.addEventListener('pointermove', (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        e.preventDefault();
+
+        const oldP = activePointers.get(e.pointerId);
+        const newP = this.getCanvasPixelPos(e);
+        activePointers.set(e.pointerId, newP);
+
+        // 1本指・マウスドラッグ：パン
+        if (activePointers.size === 1) {
+          const dx = newP.x - oldP.x;
+          const dy = newP.y - oldP.y;
+
+          if (Math.hypot(dx, dy) > 2) dragMoved = true;
+
+          view.panX += dx;
+          view.panY += dy;
+          this.scheduleDraw();
+          return;
+        }
+
+        // 2本指：ピンチズーム＋2本指移動によるパン
+        if (activePointers.size >= 2) {
+          const pinch = pointerMidAndDist();
+          if (!pinch || pinch.dist <= 0) return;
+
+          if (pinchPrevDist != null && pinchPrevMid != null) {
+            const cx = cv.width / 2;
+            const cy = cv.height / 2 + this.centerYOffsetPx;
+            const oldScale = view.scale;
+
+            const zoomFactor = pinch.dist / pinchPrevDist;
+            let newScale = oldScale * zoomFactor;
+            newScale = Math.max(view.minScale, Math.min(view.maxScale, newScale));
+
+            // 前フレームの2本指中心にあったworld座標を求める
+            const worldX = (pinchPrevMid.x - cx - view.panX) / oldScale;
+            const worldY = (pinchPrevMid.y - cy - view.panY) / oldScale;
+
+            // そのworld座標が現在の2本指中心に来るようにpanを調整
+            view.panX = (pinch.midX - cx) - newScale * worldX;
+            view.panY = (pinch.midY - cy) - newScale * worldY;
+            view.scale = newScale;
+
+            dragMoved = true;
+            this.scheduleDraw();
+          }
+
+          pinchPrevDist = pinch.dist;
+          pinchPrevMid = { x: pinch.midX, y: pinch.midY };
+        }
       });
 
-      window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
+      const finishCanvasPointer = (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        activePointers.delete(e.pointerId);
 
-        const p = this.getCanvasPixelPos(e);
-        const dx = p.x - lastX;
-        const dy = p.y - lastY;
+        if (cv.hasPointerCapture(e.pointerId)) {
+          cv.releasePointerCapture(e.pointerId);
+        }
 
-        // クリック誤判定防止：少しでも動いたら “ドラッグした” と扱う
-        if (Math.hypot(dx, dy) > 2) dragMoved = true;
+        if (activePointers.size < 2) {
+          pinchPrevDist = null;
+          pinchPrevMid = null;
+        }
 
-        view.panX += dx;
-        view.panY += dy;
+        if (activePointers.size === 0) {
+          cv.classList.remove('dragging');
+        }
+      };
 
-        lastX = p.x;
-        lastY = p.y;
+      cv.addEventListener('pointerup', finishCanvasPointer);
+      cv.addEventListener('pointercancel', finishCanvasPointer);
 
-        this.scheduleDraw();
-      });
-
-      // ホイールでズーム：マウス位置を中心にズームする
+      // PC：ホイールでズーム（マウス位置を中心にズーム）
       cv.addEventListener('wheel', (e) => {
         e.preventDefault();
 
@@ -1735,7 +1883,7 @@
         this.scheduleDraw();
       });
 
-      // クリックで選択（ドラッグしていない場合のみ）
+      // クリック／タップで選択（パン・ピンチしていない場合のみ）
       cv.addEventListener('click', (e) => {
         if (dragMoved) return;
 
