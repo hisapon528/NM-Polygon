@@ -294,23 +294,16 @@
     <h1>正 N/M 角形</h1>
     <div class="desc">
       円周上を <b>N</b> 等分した点を，<b>M</b> 個とばしで辿ります。<br/>
-      作図は <b>始点（start）</b> を基準にし，<b>始点に戻った瞬間に終了</b>します。<br/>
-      図形をクリックすると，描画左上にその図形の <b>NとM</b>の値が表示されます。</div>
-
     <div class="controlsTop">
       <button id="addRow" class="btnPrimary">＋ 追加</button>
       <button id="resetAll" class="btnWarn">リセット</button>
       <button id="openGlobal" class="btnWarn">設定</button>
       <button id="toggleAll" class="btnToggle">▶ 全アニメ再生</button>
-      <button id="saveAll">スクリーンショット保存（PNG）</button>
+      <button id="saveAll">スクリーンショット</button>
     </div>
 
     <div class="rows" id="rows"></div>
     <div class="globalBox" id="globalInfo"></div>
-
-    <div class="footerNote">
-      ※ M は内部で <b>M (mod N)</b>，始点は <b>start (mod N)</b> に変換します。<br/>
-    </div>
   </div>
 
   <div class="canvasWrap">
@@ -395,8 +388,8 @@
         <div class="left">背景</div>
         <div class="right">
           <select id="optTheme" class="miniInput" style="width:170px">
-            <option value="dark">ダークモード</option>
-            <option value="light">ライトモード</option>
+            <option value="dark">画面を暗くする</option>
+            <option value="light">画面を明るくする</option>
           </select>
         </div>
       </div>
@@ -753,7 +746,7 @@
         cv.height = h;
       }
 
-      // CSS px → device px へ換算した “中心オフセット”
+      // CSS px → device px へ換算
       this.centerYOffsetPx = Math.round(DEFAULT_CENTER_Y_OFFSET_CSS * dpr);
 
       // transform を初期化（描画の積み重なりを防ぐ）
@@ -1502,7 +1495,7 @@
     }
 
     /**
-     * “描画を要求する” ための関数
+     * “描画する” ための関数
      * - その場で drawAll/updateGlobalInfo を行う
      * - アニメ中なら raf を走らせ、止まっているなら raf を止める
     */
